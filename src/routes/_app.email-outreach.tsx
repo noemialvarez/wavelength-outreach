@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
-import { ChevronDown, ChevronUp, Mail, RefreshCw } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ChevronDown, ChevronUp, Mail, RefreshCw, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -26,34 +26,74 @@ type Draft = {
   leads?: { name: string; company: string; email?: string };
 };
 
+type Positioning = { id: string; content: string; updated_at: string };
+
 function EmailOutreachPage() {
   const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [settingsOpen, setSettingsOpen] = useState(true);
-  const [positioningContent, setPositioningContent] = useState("");
+  const [positioningText, setPositioningText] = useState("");
+  const [sequenceId, setSequenceId] = useState(() => localStorage.getItem("wl_lemlist_seq_id") ?? "");
+  const [uploadedFilename, setUploadedFilename] = useState<string | null>(null);
   const [localDrafts, setLocalDrafts] = useState<Record<string, { subject: string; body: string }>>({});
 
-  // Fetch positioning
-  const { data: positioning } = useQuery<{ content: string }>({
+  // Persist sequence ID to localStorage
+  useEffect(() => {
+    localStorage.setItem("wl_lemlist_seq_id", sequenceId);
+  }, [sequenceId]);
+
+  const { data: positioning } = useQuery<Positioning>({
     queryKey: ["positioning"],
     queryFn: () => api.get("/api/outreach/positioning").then((r) => r.data),
+    retry: false,
   });
 
-  // Fetch drafts (pending review)
+  // Seed textarea from DB on first load
+  useEffect(() => {
+    if (positioning?.content && !positioningText) {
+      setPositioningText(positioning.content);
+    }
+  }, [positioning]);
+
   const { data: drafts = [], isLoading } = useQuery<Draft[]>({
     queryKey: ["drafts"],
-    queryFn: () => api.get("/api/outreach/drafts", { params: { status: "draft", limit: 100 } }).then((r) => r.data.data ?? []),
+    queryFn: () =>
+      api.get("/api/outreach/drafts", { params: { status: "draft", limit: 100 } }).then((r) => r.data.data ?? []),
   });
 
-  // Fetch approved leads (to allow generating new drafts)
   const { data: approvedLeads = [] } = useQuery({
     queryKey: ["leads", "Approved"],
-    queryFn: () => api.get("/api/leads", { params: { status: "Approved", limit: 100 } }).then((r) => r.data.data ?? []),
+    queryFn: () =>
+      api.get("/api/leads", { params: { status: "Approved", limit: 100 } }).then((r) => r.data.data ?? []),
   });
 
   const draftedLeadIds = new Set(drafts.map((d) => d.lead_id));
   const leadsWithoutDraft = approvedLeads.filter((l: { id: string }) => !draftedLeadIds.has(l.id));
 
-  const savePositioningMutation = useMutation({
+  // Upload positioning file
+  const uploadMutation = useMutation({
+    mutationFn: (file: File) => {
+      const form = new FormData();
+      form.append("file", file);
+      return api.post("/api/outreach/positioning/upload", form, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+    },
+    onSuccess: (res) => {
+      setPositioningText(res.data.content);
+      setUploadedFilename(res.data.filename);
+      toast.success(`Positioning extracted from ${res.data.filename}`);
+      queryClient.invalidateQueries({ queryKey: ["positioning"] });
+    },
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? "Upload failed";
+      toast.error(msg);
+    },
+  });
+
+  // Save positioning text manually
+  const saveTextMutation = useMutation({
     mutationFn: (content: string) => api.put("/api/outreach/positioning", { content }),
     onSuccess: () => {
       toast.success("Positioning saved");
@@ -68,24 +108,35 @@ function EmailOutreachPage() {
       toast.success("Draft generated");
       queryClient.invalidateQueries({ queryKey: ["drafts"] });
     },
-    onError: () => toast.error("Failed to generate draft — is positioning set?"),
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? "Failed to generate draft";
+      toast.error(msg);
+    },
   });
 
   const updateDraftMutation = useMutation({
     mutationFn: ({ id, subject, body }: { id: string; subject: string; body: string }) =>
       api.patch(`/api/outreach/drafts/${id}`, { subject, body }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["drafts"] }),
   });
 
   const approveMutation = useMutation({
-    mutationFn: (draftId: string) => api.post(`/api/outreach/approve/${draftId}`),
-    onSuccess: (_, draftId) => {
+    mutationFn: ({ draftId, seq }: { draftId: string; seq: string }) =>
+      api.post(`/api/outreach/approve/${draftId}`, { sequence_id: seq || undefined }),
+    onSuccess: (res, { draftId }) => {
       const draft = drafts.find((d) => d.id === draftId);
-      toast.success(`${draft?.leads?.company ?? "Lead"} pushed to Lemlist`);
+      const company = draft?.leads?.company ?? "Lead";
+      if (res.data.skipped) {
+        toast.success(`${company} marked as sent (Lemlist push skipped — ${res.data.lemlist?.reason})`);
+      } else {
+        toast.success(`${company} pushed to Lemlist sequence`);
+      }
       queryClient.invalidateQueries({ queryKey: ["drafts"] });
       queryClient.invalidateQueries({ queryKey: ["leads"] });
     },
-    onError: () => toast.error("Failed to push to Lemlist"),
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? "Failed to push to Lemlist";
+      toast.error(msg);
+    },
   });
 
   const deleteDraftMutation = useMutation({
@@ -100,12 +151,18 @@ function EmailOutreachPage() {
     if (edited) updateDraftMutation.mutate({ id: draft.id, ...edited });
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) uploadMutation.mutate(file);
+    e.target.value = "";
+  };
+
   return (
     <div className="mx-auto max-w-5xl space-y-6 p-8">
       <div>
         <h1 className="text-2xl font-semibold">Email Outreach</h1>
         <p className="text-sm text-muted-foreground">
-          Review drafted emails for approved leads and push them into your sequence.
+          Review Claude-drafted emails for approved leads and push them into your Lemlist sequence.
         </p>
       </div>
 
@@ -117,27 +174,73 @@ function EmailOutreachPage() {
         >
           <div className="text-left">
             <h2 className="text-base font-semibold">Settings</h2>
-            <p className="text-xs text-muted-foreground">Positioning and tone for Claude drafts.</p>
+            <p className="text-xs text-muted-foreground">Positioning file and Lemlist sequence.</p>
           </div>
           {settingsOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </button>
+
         {settingsOpen && (
-          <div className="mt-5 space-y-4">
+          <div className="mt-5 space-y-5">
+            {/* Positioning */}
             <div>
-              <label className="mb-1 block text-xs font-medium">Positioning / about you</label>
+              <div className="mb-2 flex items-center justify-between">
+                <label className="text-xs font-medium">Positioning file</label>
+                <div className="flex items-center gap-2">
+                  {uploadedFilename && (
+                    <span className="text-xs text-muted-foreground">{uploadedFilename}</span>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadMutation.isPending}
+                  >
+                    <Upload className="mr-1.5 h-3.5 w-3.5" />
+                    {uploadMutation.isPending ? "Extracting…" : uploadedFilename ? "Replace file" : "Upload PDF / DOCX"}
+                  </Button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf,.doc,.docx,.txt"
+                    className="hidden"
+                    onChange={handleFileChange}
+                  />
+                </div>
+              </div>
               <Textarea
-                rows={6}
-                placeholder="Describe who you are, what you do, and why founders should talk to you. Claude uses this to personalise every email."
-                value={positioningContent || (positioning as { content?: string })?.content || ""}
-                onChange={(e) => setPositioningContent(e.target.value)}
+                rows={7}
+                placeholder="Paste your positioning here, or upload a PDF/DOCX above. Claude uses this context to personalise every email."
+                value={positioningText}
+                onChange={(e) => setPositioningText(e.target.value)}
               />
+              <Button
+                size="sm"
+                className="mt-2"
+                variant="outline"
+                onClick={() => saveTextMutation.mutate(positioningText)}
+                disabled={saveTextMutation.isPending || !positioningText}
+              >
+                {saveTextMutation.isPending ? "Saving…" : "Save positioning"}
+              </Button>
             </div>
-            <Button
-              onClick={() => savePositioningMutation.mutate(positioningContent)}
-              disabled={savePositioningMutation.isPending}
-            >
-              Save positioning
-            </Button>
+
+            {/* Lemlist sequence ID */}
+            <div>
+              <label className="mb-1 block text-xs font-medium">
+                Lemlist sequence ID
+                <span className="ml-1 font-normal text-muted-foreground">(from your Lemlist campaign URL)</span>
+              </label>
+              <Input
+                placeholder="cam_xxxxxxxxxxxxxxx"
+                value={sequenceId}
+                onChange={(e) => setSequenceId(e.target.value)}
+              />
+              {!sequenceId && (
+                <p className="mt-1 text-xs text-amber-600">
+                  No sequence ID set — leads will be marked as sent but not pushed to Lemlist.
+                </p>
+              )}
+            </div>
           </div>
         )}
       </Card>
@@ -159,8 +262,8 @@ function EmailOutreachPage() {
                   onClick={() => generateDraftMutation.mutate(l.id)}
                   disabled={generateDraftMutation.isPending}
                 >
-                  <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
-                  Generate draft
+                  <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${generateDraftMutation.isPending ? "animate-spin" : ""}`} />
+                  {generateDraftMutation.isPending ? "Drafting…" : "Generate draft"}
                 </Button>
               </div>
             ))}
@@ -172,7 +275,7 @@ function EmailOutreachPage() {
       <div className="flex items-center justify-between">
         <h2 className="text-base font-semibold">Draft review queue</h2>
         <Button
-          onClick={() => drafts.forEach((d) => approveMutation.mutate(d.id))}
+          onClick={() => drafts.forEach((d) => approveMutation.mutate({ draftId: d.id, seq: sequenceId }))}
           disabled={drafts.length === 0 || approveMutation.isPending}
         >
           Push all
@@ -185,7 +288,10 @@ function EmailOutreachPage() {
       {isLoading ? (
         <p className="py-8 text-center text-sm text-muted-foreground">Loading drafts…</p>
       ) : drafts.length === 0 ? (
-        <EmptyState icon={Mail} message="No drafts ready. Approve leads in Lead Discovery first, then generate drafts." />
+        <EmptyState
+          icon={Mail}
+          message="No drafts ready. Approve leads in Lead Discovery first, then generate drafts."
+        />
       ) : (
         <div className="space-y-4">
           {drafts.map((d) => {
@@ -198,17 +304,18 @@ function EmailOutreachPage() {
                       <h3 className="font-semibold">{d.leads?.name}</h3>
                       <span className="text-sm text-muted-foreground">· {d.leads?.company}</span>
                     </div>
+                    {d.leads?.email && (
+                      <p className="mt-0.5 text-xs text-muted-foreground">{d.leads.email}</p>
+                    )}
                   </div>
                   <StatusBadge label="Draft" tone="muted" />
                 </div>
+
                 <div className="space-y-2">
                   <Input
                     value={edited.subject}
                     onChange={(e) =>
-                      setLocalDrafts((prev) => ({
-                        ...prev,
-                        [d.id]: { ...getEdited(d), subject: e.target.value },
-                      }))
+                      setLocalDrafts((prev) => ({ ...prev, [d.id]: { ...getEdited(d), subject: e.target.value } }))
                     }
                     onBlur={() => saveEdit(d)}
                     placeholder="Subject"
@@ -217,14 +324,12 @@ function EmailOutreachPage() {
                     rows={8}
                     value={edited.body}
                     onChange={(e) =>
-                      setLocalDrafts((prev) => ({
-                        ...prev,
-                        [d.id]: { ...getEdited(d), body: e.target.value },
-                      }))
+                      setLocalDrafts((prev) => ({ ...prev, [d.id]: { ...getEdited(d), body: e.target.value } }))
                     }
                     onBlur={() => saveEdit(d)}
                   />
                 </div>
+
                 <div className="mt-4 flex justify-end gap-2">
                   <Button
                     size="sm"
@@ -238,7 +343,11 @@ function EmailOutreachPage() {
                   <Button size="sm" variant="ghost" onClick={() => deleteDraftMutation.mutate(d.id)}>
                     Skip
                   </Button>
-                  <Button size="sm" onClick={() => approveMutation.mutate(d.id)} disabled={approveMutation.isPending}>
+                  <Button
+                    size="sm"
+                    onClick={() => approveMutation.mutate({ draftId: d.id, seq: sequenceId })}
+                    disabled={approveMutation.isPending}
+                  >
                     Approve and push to Lemlist
                   </Button>
                 </div>
