@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { APP_PASSWORD, unlock } from "@/lib/auth-gate";
+import logoDark from "@/assets/logo-dark.svg";
 
 export function PasswordGate({ onUnlock }: { onUnlock: () => void }) {
   const [value, setValue] = useState("");
