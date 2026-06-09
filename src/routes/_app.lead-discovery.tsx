@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Plus, Play, Radar, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -24,10 +25,11 @@ import {
 } from "@/components/ui/table";
 import { EmptyState } from "@/components/empty-state";
 import { StatusBadge } from "@/components/status-badge";
-import { store, useStore, uid, generateDraft, type SignalType, type LeadStatus } from "@/lib/store";
+import { store, useStore, uid, type SignalType, type LeadStatus } from "@/lib/store";
+import api from "@/lib/api";
 
 export const Route = createFileRoute("/_app/lead-discovery")({
-  head: () => ({ meta: [{ title: "Lead Discovery — InsightSphere" }] }),
+  head: () => ({ meta: [{ title: "Lead Discovery — Wavelength" }] }),
   component: LeadDiscoveryPage,
 });
 
@@ -47,17 +49,44 @@ const statusTones: Record<LeadStatus, "turquoise" | "pink" | "blue" | "muted"> =
 function LeadDiscoveryPage() {
   const sources = useStore((s) => s.sources);
   const icp = useStore((s) => s.icp);
-  const leads = useStore((s) => s.leads);
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
-  const [scanning, setScanning] = useState(false);
+
+  const queryClient = useQueryClient();
+
+  const { data: leadsData, isLoading } = useQuery({
+    queryKey: ["leads"],
+    queryFn: () => api.get("/api/leads", { params: { limit: 200 } }).then((r) => r.data.data ?? []),
+  });
+  const leads = leadsData ?? [];
+
+  const updateStatusMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: string }) =>
+      api.patch(`/api/leads/${id}`, { status }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["leads"] }),
+    onError: () => toast.error("Failed to update lead status"),
+  });
+
+  const scanMutation = useMutation({
+    mutationFn: () => {
+      const enabledSources = sources
+        .filter((s) => s.enabled)
+        .map((s) => s.name.toLowerCase().replace(/\s+/g, ""));
+      return api.post("/api/discovery/runs", { sources: enabledSources });
+    },
+    onSuccess: () => {
+      toast.success("Signal scan started — results will appear shortly");
+      setTimeout(() => queryClient.invalidateQueries({ queryKey: ["leads"] }), 8000);
+    },
+    onError: () => toast.error("Scan failed — check backend connection"),
+  });
 
   const filtered = useMemo(
     () =>
       leads.filter(
-        (l) =>
+        (l: { status: string; signalType?: string }) =>
           (statusFilter === "all" || l.status === statusFilter) &&
           (typeFilter === "all" || l.signalType === typeFilter),
       ),
@@ -74,42 +103,13 @@ function LeadDiscoveryPage() {
   };
 
   const setLeadStatus = (id: string, status: LeadStatus) => {
-    store.set((s) => ({
-      ...s,
-      leads: s.leads.map((l) => {
-        if (l.id !== id) return l;
-        if (status === "Approved" && !l.draftSubject) {
-          const d = generateDraft(l);
-          return { ...l, status, draftSubject: d.subject, draftBody: d.body };
-        }
-        return { ...l, status };
-      }),
-    }));
+    updateStatusMutation.mutate({ id, status });
   };
 
   const bulkSet = (status: LeadStatus) => {
-    selected.forEach((id) => setLeadStatus(id, status));
+    selected.forEach((id) => updateStatusMutation.mutate({ id, status }));
     toast.success(`${selected.size} lead${selected.size === 1 ? "" : "s"} ${status.toLowerCase()}`);
     setSelected(new Set());
-  };
-
-  const runScan = () => {
-    setScanning(true);
-    setTimeout(() => {
-      const newLead = {
-        id: uid(),
-        company: "Lumin Energy",
-        signalSummary: "Won EU innovation grant of €1.2M",
-        signalType: "Funding" as SignalType,
-        founderName: "Elena Roth",
-        linkedinUrl: "https://linkedin.com/in/elenaroth",
-        status: "Pending review" as LeadStatus,
-        dateFound: new Date().toISOString().slice(0, 10),
-      };
-      store.set((s) => ({ ...s, leads: [newLead, ...s.leads] }));
-      setScanning(false);
-      toast.success("Signal scan complete — 1 new lead found");
-    }, 1200);
   };
 
   return (
@@ -141,9 +141,9 @@ function LeadDiscoveryPage() {
             >
               <Plus className="mr-1.5 h-4 w-4" /> Add source
             </Button>
-            <Button size="sm" onClick={runScan} disabled={scanning}>
+            <Button size="sm" onClick={() => scanMutation.mutate()} disabled={scanMutation.isPending}>
               <Play className="mr-1.5 h-4 w-4" />
-              {scanning ? "Scanning..." : "Run signal scan"}
+              {scanMutation.isPending ? "Scanning..." : "Run signal scan"}
             </Button>
           </div>
         </div>
@@ -355,11 +355,10 @@ function LeadDiscoveryPage() {
           </div>
         )}
 
-        {filtered.length === 0 ? (
-          <EmptyState
-            icon={Radar}
-            message="No leads yet. Configure your sources and run a scan."
-          />
+        {isLoading ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">Loading leads…</p>
+        ) : filtered.length === 0 ? (
+          <EmptyState icon={Radar} message="No leads yet. Configure your sources and run a scan." />
         ) : (
           <div className="overflow-hidden rounded-md border">
             <Table>
@@ -377,7 +376,10 @@ function LeadDiscoveryPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((l) => (
+                {filtered.map((l: {
+                  id: string; company: string; notes?: string; signalType?: SignalType;
+                  name: string; linkedin_url?: string; status: LeadStatus; created_at: string;
+                }) => (
                   <TableRow key={l.id}>
                     <TableCell>
                       <Checkbox
@@ -387,26 +389,32 @@ function LeadDiscoveryPage() {
                     </TableCell>
                     <TableCell className="font-medium">{l.company}</TableCell>
                     <TableCell className="max-w-xs text-sm text-muted-foreground">
-                      {l.signalSummary}
+                      {l.notes}
                     </TableCell>
                     <TableCell>
-                      <StatusBadge label={l.signalType} tone={signalTones[l.signalType]} />
+                      {l.signalType && (
+                        <StatusBadge label={l.signalType} tone={signalTones[l.signalType]} />
+                      )}
                     </TableCell>
-                    <TableCell>{l.founderName}</TableCell>
+                    <TableCell>{l.name}</TableCell>
                     <TableCell>
-                      <a
-                        href={l.linkedinUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-sm text-brand-blue hover:underline"
-                      >
-                        View
-                      </a>
+                      {l.linkedin_url && (
+                        <a
+                          href={l.linkedin_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-sm text-brand-blue hover:underline"
+                        >
+                          View
+                        </a>
+                      )}
                     </TableCell>
                     <TableCell>
-                      <StatusBadge label={l.status} tone={statusTones[l.status]} />
+                      <StatusBadge label={l.status} tone={statusTones[l.status as LeadStatus] ?? "muted"} />
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{l.dateFound}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {l.created_at?.slice(0, 10)}
+                    </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1.5">
                         <Button
