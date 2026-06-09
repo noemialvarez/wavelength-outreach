@@ -68,14 +68,17 @@ type State = {
   sequences: SequenceRow[];
 };
 
-const KEY = "insightsphere-state-v2";
+const KEY = "insightsphere-state-v3";
 
 const seed = (): State => ({
   sources: [
     { id: "s1", name: "Wellfound", url: "https://wellfound.com/", enabled: true },
+    { id: "s4", name: "Startupticker.ch", url: "https://www.startupticker.ch/", enabled: true },
+    { id: "s29", name: "Swiss Startup Radar", url: "https://www.swissstartupradar.ch/", enabled: true },
+    { id: "s26", name: "Crunchbase", url: "https://www.crunchbase.com/", enabled: true },
+    { id: "s30", name: "LinkedIn News", url: "https://www.linkedin.com/news/", enabled: true },
     { id: "s2", name: "Y Combinator Jobs", url: "https://www.ycombinator.com/jobs", enabled: true },
     { id: "s3", name: "Startup Digest", url: "https://www.startupdigest.com/", enabled: true },
-    { id: "s4", name: "Startupticker.ch", url: "https://www.startupticker.ch/", enabled: true },
     { id: "s5", name: "Sifted", url: "https://sifted.eu/", enabled: true },
     { id: "s6", name: "TechCrunch Startups", url: "https://techcrunch.com/startups/", enabled: true },
     { id: "s7", name: "StrictlyVC", url: "https://www.strictlyvc.com/", enabled: true },
@@ -97,7 +100,6 @@ const seed = (): State => ({
     { id: "s23", name: "The Information", url: "https://www.theinformation.com/", enabled: true },
     { id: "s24", name: "Hacker News", url: "https://news.ycombinator.com/", enabled: true },
     { id: "s25", name: "Product Hunt", url: "https://www.producthunt.com/", enabled: true },
-    { id: "s26", name: "Crunchbase", url: "https://www.crunchbase.com/", enabled: true },
     { id: "s27", name: "Dealroom", url: "https://dealroom.co/", enabled: true },
     { id: "s28", name: "Failory", url: "https://www.failory.com/", enabled: true },
   ],
