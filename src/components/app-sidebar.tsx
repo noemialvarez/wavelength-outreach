@@ -1,6 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Radar, Mail, MessageCircle, Activity } from "lucide-react";
-import logoUrl from "@/assets/logo.svg";
+import logoUrl from "@/assets/logo.png";
 import {
   Sidebar,
   SidebarContent,
@@ -26,7 +26,7 @@ export function AppSidebar() {
     <Sidebar collapsible="none" className="border-r-0">
       <SidebarHeader className="px-4 py-5">
         <div className="flex items-center gap-2.5">
-          <img src={logoUrl} alt="Ingevr" className="h-7 w-auto" />
+          <img src={logoUrl} alt="InsightSphere" className="h-8 w-auto" />
           <div className="leading-tight">
             <div className="text-[10px] uppercase tracking-wide text-sidebar-foreground/60">
               Outreach Hub
