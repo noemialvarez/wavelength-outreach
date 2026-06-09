@@ -5,6 +5,7 @@ export type LeadStatus = "Pending review" | "Approved" | "Skipped" | "Pushed";
 
 export type Source = { id: string; name: string; url: string; enabled: boolean };
 export type IcpFilters = {
+  companyNames: string[];
   titles: string[];
   industries: string[];
   companySize: string;
