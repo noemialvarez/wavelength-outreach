@@ -9,38 +9,105 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppSequenceMonitorRouteImport } from './routes/_app.sequence-monitor'
+import { Route as AppProspectEngagementRouteImport } from './routes/_app.prospect-engagement'
+import { Route as AppLeadDiscoveryRouteImport } from './routes/_app.lead-discovery'
+import { Route as AppEmailOutreachRouteImport } from './routes/_app.email-outreach'
 
+const AppRoute = AppRouteImport.update({
+  id: '/_app',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppSequenceMonitorRoute = AppSequenceMonitorRouteImport.update({
+  id: '/sequence-monitor',
+  path: '/sequence-monitor',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppProspectEngagementRoute = AppProspectEngagementRouteImport.update({
+  id: '/prospect-engagement',
+  path: '/prospect-engagement',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppLeadDiscoveryRoute = AppLeadDiscoveryRouteImport.update({
+  id: '/lead-discovery',
+  path: '/lead-discovery',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppEmailOutreachRoute = AppEmailOutreachRouteImport.update({
+  id: '/email-outreach',
+  path: '/email-outreach',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/email-outreach': typeof AppEmailOutreachRoute
+  '/lead-discovery': typeof AppLeadDiscoveryRoute
+  '/prospect-engagement': typeof AppProspectEngagementRoute
+  '/sequence-monitor': typeof AppSequenceMonitorRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/email-outreach': typeof AppEmailOutreachRoute
+  '/lead-discovery': typeof AppLeadDiscoveryRoute
+  '/prospect-engagement': typeof AppProspectEngagementRoute
+  '/sequence-monitor': typeof AppSequenceMonitorRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_app': typeof AppRouteWithChildren
+  '/_app/email-outreach': typeof AppEmailOutreachRoute
+  '/_app/lead-discovery': typeof AppLeadDiscoveryRoute
+  '/_app/prospect-engagement': typeof AppProspectEngagementRoute
+  '/_app/sequence-monitor': typeof AppSequenceMonitorRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/email-outreach'
+    | '/lead-discovery'
+    | '/prospect-engagement'
+    | '/sequence-monitor'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/email-outreach'
+    | '/lead-discovery'
+    | '/prospect-engagement'
+    | '/sequence-monitor'
+  id:
+    | '__root__'
+    | '/'
+    | '/_app'
+    | '/_app/email-outreach'
+    | '/_app/lead-discovery'
+    | '/_app/prospect-engagement'
+    | '/_app/sequence-monitor'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AppRoute: typeof AppRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,22 +115,57 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/sequence-monitor': {
+      id: '/_app/sequence-monitor'
+      path: '/sequence-monitor'
+      fullPath: '/sequence-monitor'
+      preLoaderRoute: typeof AppSequenceMonitorRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/prospect-engagement': {
+      id: '/_app/prospect-engagement'
+      path: '/prospect-engagement'
+      fullPath: '/prospect-engagement'
+      preLoaderRoute: typeof AppProspectEngagementRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/lead-discovery': {
+      id: '/_app/lead-discovery'
+      path: '/lead-discovery'
+      fullPath: '/lead-discovery'
+      preLoaderRoute: typeof AppLeadDiscoveryRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/email-outreach': {
+      id: '/_app/email-outreach'
+      path: '/email-outreach'
+      fullPath: '/email-outreach'
+      preLoaderRoute: typeof AppEmailOutreachRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
+interface AppRouteChildren {
+  AppEmailOutreachRoute: typeof AppEmailOutreachRoute
+  AppLeadDiscoveryRoute: typeof AppLeadDiscoveryRoute
+  AppProspectEngagementRoute: typeof AppProspectEngagementRoute
+  AppSequenceMonitorRoute: typeof AppSequenceMonitorRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppEmailOutreachRoute: AppEmailOutreachRoute,
+  AppLeadDiscoveryRoute: AppLeadDiscoveryRoute,
+  AppProspectEngagementRoute: AppProspectEngagementRoute,
+  AppSequenceMonitorRoute: AppSequenceMonitorRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AppRoute: AppRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
