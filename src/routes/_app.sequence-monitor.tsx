@@ -24,7 +24,7 @@ export const Route = createFileRoute("/_app/sequence-monitor")({
 
 const statusTones: Record<SequenceStatus, "turquoise" | "pink" | "blue" | "muted" | "amber"> = {
   Active: "blue",
-  Opened: "amber",
+  Opened: "pink",
   Replied: "turquoise",
   Bounced: "muted",
   Unsubscribed: "muted",
