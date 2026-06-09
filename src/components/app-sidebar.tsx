@@ -1,5 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Radar, Mail, MessageCircle, Activity, Sparkles } from "lucide-react";
+import { Radar, Mail, MessageCircle, Activity } from "lucide-react";
+import logoUrl from "@/assets/logo.svg";
 import {
   Sidebar,
   SidebarContent,
