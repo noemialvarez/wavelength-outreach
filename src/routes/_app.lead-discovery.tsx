@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Plus, Play, Radar, Trash2 } from "lucide-react";
+import { Plus, Play, Radar, Trash2, Search, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -75,6 +75,26 @@ function LeadDiscoveryPage() {
       api.patch(`/api/leads/${id}`, { email }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["leads"] }),
     onError: () => toast.error("Failed to save email"),
+  });
+
+  const findEmailMutation = useMutation({
+    mutationFn: (id: string) =>
+      api.post(`/api/leads/${id}/find-email`).then((r) => r.data as { email: string | null }),
+    onSuccess: (data, id) => {
+      if (data.email) {
+        setLocalEmails((prev) => ({ ...prev, [id]: data.email! }));
+        toast.success(`Email found: ${data.email}`);
+        queryClient.invalidateQueries({ queryKey: ["leads"] });
+      } else {
+        toast.info("No email found for this lead on Apollo");
+      }
+    },
+    onError: (err: unknown) => {
+      const msg =
+        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
+        "Apollo lookup failed";
+      toast.error(msg);
+    },
   });
 
   const scanMutation = useMutation({
@@ -407,20 +427,36 @@ function LeadDiscoveryPage() {
                     </TableCell>
                     <TableCell>{l.name}</TableCell>
                     <TableCell>
-                      <Input
-                        className="h-7 w-44 text-sm"
-                        placeholder="founder@co.com"
-                        value={localEmails[l.id] ?? l.email ?? ""}
-                        onChange={(e) =>
-                          setLocalEmails((prev) => ({ ...prev, [l.id]: e.target.value }))
-                        }
-                        onBlur={() => {
-                          const val = localEmails[l.id];
-                          if (val !== undefined && val !== (l.email ?? "")) {
-                            updateEmailMutation.mutate({ id: l.id, email: val });
+                      <div className="flex items-center gap-1">
+                        <Input
+                          className="h-7 w-40 text-sm"
+                          placeholder="founder@co.com"
+                          value={localEmails[l.id] ?? l.email ?? ""}
+                          onChange={(e) =>
+                            setLocalEmails((prev) => ({ ...prev, [l.id]: e.target.value }))
                           }
-                        }}
-                      />
+                          onBlur={() => {
+                            const val = localEmails[l.id];
+                            if (val !== undefined && val !== (l.email ?? "")) {
+                              updateEmailMutation.mutate({ id: l.id, email: val });
+                            }
+                          }}
+                        />
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
+                          title="Look up email via Apollo"
+                          onClick={() => findEmailMutation.mutate(l.id)}
+                          disabled={findEmailMutation.isPending && findEmailMutation.variables === l.id}
+                        >
+                          {findEmailMutation.isPending && findEmailMutation.variables === l.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Search className="h-3.5 w-3.5" />
+                          )}
+                        </Button>
+                      </div>
                     </TableCell>
                     <TableCell>
                       {l.linkedin_url && (
