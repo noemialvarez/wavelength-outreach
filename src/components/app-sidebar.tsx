@@ -28,7 +28,7 @@ export function AppSidebar() {
         <div className="flex items-center gap-3">
           <img src={logoUrl} alt="InsightSphere" className="h-8 w-auto" />
           <span className="text-sm font-semibold text-sidebar-foreground">
-            Outreach Hub
+            {"\n"}            &nbsp;&nbsp;&nbsp;&nbsp; Outreach Hub
           </span>
         </div>
       </SidebarHeader>
