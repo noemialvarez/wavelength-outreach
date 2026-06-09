@@ -10,7 +10,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarGroupLabel,
 } from "@/components/ui/sidebar";
 
 const items = [
@@ -26,7 +25,7 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="none" className="border-r-0">
       <SidebarHeader className="px-4 py-5">
-        <div className="flex flex-col items-center gap-2">
+        <div className="flex flex-col items-center gap-3">
           <img src={logoUrl} alt="InsightSphere" className="h-10 w-auto" />
           <span className="text-sm font-semibold tracking-wide text-sidebar-foreground">
             Outreach Hub
@@ -35,7 +34,6 @@ export function AppSidebar() {
       </SidebarHeader>
       <SidebarContent className="px-2">
         <SidebarGroup>
-          <SidebarGroupLabel>Outreach Hub</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {items.map((item) => {
