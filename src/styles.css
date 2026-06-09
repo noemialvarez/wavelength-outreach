@@ -129,4 +129,10 @@
     color: var(--color-foreground);
     font-family: var(--font-sans);
   }
-}
+  }
+
+  main h1,
+  main h2,
+  main h3 {
+    color: #302C4E;
+  }
