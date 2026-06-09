@@ -7,9 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/empty-state";
-import { StatusBadge } from "@/components/status-badge";
 import api from "@/lib/api";
 
 export const Route = createFileRoute("/_app/email-outreach")({
@@ -28,20 +26,23 @@ type Draft = {
 
 type Positioning = { id: string; content: string; updated_at: string };
 
+type LeadGroup = {
+  lead_id: string;
+  lead: { name: string; company: string; email?: string } | undefined;
+  drafts: Draft[];
+};
+
 function EmailOutreachPage() {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [settingsOpen, setSettingsOpen] = useState(true);
   const [positioningText, setPositioningText] = useState("");
-  const [sequenceId, setSequenceId] = useState(() => localStorage.getItem("wl_lemlist_seq_id") ?? "");
   const [uploadedFilename, setUploadedFilename] = useState<string | null>(null);
+  // localDrafts: per-draft edits keyed by draft id
   const [localDrafts, setLocalDrafts] = useState<Record<string, { subject: string; body: string }>>({});
-
-  // Persist sequence ID to localStorage
-  useEffect(() => {
-    localStorage.setItem("wl_lemlist_seq_id", sequenceId);
-  }, [sequenceId]);
+  // activeDraft: which draft id is selected per lead group
+  const [activeDraft, setActiveDraft] = useState<Record<string, string>>({});
 
   const { data: positioning } = useQuery<Positioning>({
     queryKey: ["positioning"],
@@ -49,7 +50,6 @@ function EmailOutreachPage() {
     retry: false,
   });
 
-  // Seed textarea from DB on first load
   useEffect(() => {
     if (positioning?.content && !positioningText) {
       setPositioningText(positioning.content);
@@ -68,8 +68,28 @@ function EmailOutreachPage() {
       api.get("/api/leads", { params: { status: "Approved", limit: 100 } }).then((r) => r.data.data ?? []),
   });
 
+  // Group drafts by lead, preserving insertion order
+  const leadGroups: LeadGroup[] = (() => {
+    const map = new Map<string, LeadGroup>();
+    for (const d of drafts) {
+      if (!map.has(d.lead_id)) {
+        map.set(d.lead_id, { lead_id: d.lead_id, lead: d.leads, drafts: [] });
+      }
+      map.get(d.lead_id)!.drafts.push(d);
+    }
+    return Array.from(map.values());
+  })();
+
   const draftedLeadIds = new Set(drafts.map((d) => d.lead_id));
   const leadsWithoutDraft = approvedLeads.filter((l: { id: string }) => !draftedLeadIds.has(l.id));
+
+  // For a group, which draft is currently active
+  const getActiveDraftId = (group: LeadGroup) =>
+    activeDraft[group.lead_id] && group.drafts.find((d) => d.id === activeDraft[group.lead_id])
+      ? activeDraft[group.lead_id]
+      : group.drafts[0]?.id;
+
+  const getEdited = (draft: Draft) => localDrafts[draft.id] ?? { subject: draft.subject, body: draft.body };
 
   // Upload positioning file
   const uploadMutation = useMutation({
@@ -92,7 +112,6 @@ function EmailOutreachPage() {
     },
   });
 
-  // Save positioning text manually
   const saveTextMutation = useMutation({
     mutationFn: (content: string) => api.put("/api/outreach/positioning", { content }),
     onSuccess: () => {
@@ -119,22 +138,22 @@ function EmailOutreachPage() {
       api.patch(`/api/outreach/drafts/${id}`, { subject, body }),
   });
 
+  const saveEdit = (draft: Draft) => {
+    const edited = localDrafts[draft.id];
+    if (edited) updateDraftMutation.mutate({ id: draft.id, ...edited });
+  };
+
   const approveMutation = useMutation({
-    mutationFn: ({ draftId, seq }: { draftId: string; seq: string }) =>
-      api.post(`/api/outreach/approve/${draftId}`, { sequence_id: seq || undefined }),
-    onSuccess: (res, { draftId }) => {
+    mutationFn: (draftId: string) => api.post(`/api/outreach/approve/${draftId}`, {}),
+    onSuccess: (_res, draftId) => {
       const draft = drafts.find((d) => d.id === draftId);
-      const company = draft?.leads?.company ?? "Lead";
-      if (res.data.skipped) {
-        toast.success(`${company} marked as sent (Lemlist push skipped — ${res.data.lemlist?.reason})`);
-      } else {
-        toast.success(`${company} pushed to Lemlist sequence`);
-      }
+      const name = draft?.leads?.name ?? "Lead";
+      toast.success(`${name} — draft approved. Will push to Lemlist once API key is configured.`);
       queryClient.invalidateQueries({ queryKey: ["drafts"] });
       queryClient.invalidateQueries({ queryKey: ["leads"] });
     },
     onError: (err: unknown) => {
-      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? "Failed to push to Lemlist";
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? "Approval failed";
       toast.error(msg);
     },
   });
@@ -143,13 +162,6 @@ function EmailOutreachPage() {
     mutationFn: (id: string) => api.delete(`/api/outreach/drafts/${id}`),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["drafts"] }),
   });
-
-  const getEdited = (draft: Draft) => localDrafts[draft.id] ?? { subject: draft.subject, body: draft.body };
-
-  const saveEdit = (draft: Draft) => {
-    const edited = localDrafts[draft.id];
-    if (edited) updateDraftMutation.mutate({ id: draft.id, ...edited });
-  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -174,78 +186,57 @@ function EmailOutreachPage() {
         >
           <div className="text-left">
             <h2 className="text-base font-semibold">Settings</h2>
-            <p className="text-xs text-muted-foreground">Positioning file and Lemlist sequence.</p>
+            <p className="text-xs text-muted-foreground">Positioning file for Claude context.</p>
           </div>
           {settingsOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </button>
 
         {settingsOpen && (
-          <div className="mt-5 space-y-5">
-            {/* Positioning */}
-            <div>
-              <div className="mb-2 flex items-center justify-between">
-                <label className="text-xs font-medium">Positioning file</label>
-                <div className="flex items-center gap-2">
-                  {uploadedFilename && (
-                    <span className="text-xs text-muted-foreground">{uploadedFilename}</span>
-                  )}
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploadMutation.isPending}
-                  >
-                    <Upload className="mr-1.5 h-3.5 w-3.5" />
-                    {uploadMutation.isPending ? "Extracting…" : uploadedFilename ? "Replace file" : "Upload PDF / DOCX"}
-                  </Button>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".pdf,.doc,.docx,.txt"
-                    className="hidden"
-                    onChange={handleFileChange}
-                  />
-                </div>
+          <div className="mt-5">
+            <div className="mb-2 flex items-center justify-between">
+              <label className="text-xs font-medium">Positioning file</label>
+              <div className="flex items-center gap-2">
+                {uploadedFilename && (
+                  <span className="text-xs text-muted-foreground">{uploadedFilename}</span>
+                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadMutation.isPending}
+                >
+                  <Upload className="mr-1.5 h-3.5 w-3.5" />
+                  {uploadMutation.isPending ? "Extracting…" : uploadedFilename ? "Replace file" : "Upload PDF / DOCX"}
+                </Button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf,.doc,.docx,.txt"
+                  className="hidden"
+                  onChange={handleFileChange}
+                />
               </div>
-              <Textarea
-                rows={7}
-                placeholder="Paste your positioning here, or upload a PDF/DOCX above. Claude uses this context to personalise every email."
-                value={positioningText}
-                onChange={(e) => setPositioningText(e.target.value)}
-              />
-              <Button
-                size="sm"
-                className="mt-2"
-                variant="outline"
-                onClick={() => saveTextMutation.mutate(positioningText)}
-                disabled={saveTextMutation.isPending || !positioningText}
-              >
-                {saveTextMutation.isPending ? "Saving…" : "Save positioning"}
-              </Button>
             </div>
-
-            {/* Lemlist sequence ID */}
-            <div>
-              <label className="mb-1 block text-xs font-medium">
-                Lemlist sequence ID
-                <span className="ml-1 font-normal text-muted-foreground">(from your Lemlist campaign URL)</span>
-              </label>
-              <Input
-                placeholder="cam_xxxxxxxxxxxxxxx"
-                value={sequenceId}
-                onChange={(e) => setSequenceId(e.target.value)}
-              />
-              {!sequenceId && (
-                <p className="mt-1 text-xs text-amber-600">
-                  No sequence ID set — leads will be marked as sent but not pushed to Lemlist.
-                </p>
-              )}
-            </div>
+            <Textarea
+              rows={7}
+              placeholder="Paste your positioning here, or upload a PDF/DOCX above."
+              value={positioningText}
+              onChange={(e) => setPositioningText(e.target.value)}
+            />
+            <Button
+              size="sm"
+              className="mt-2"
+              variant="outline"
+              onClick={() => saveTextMutation.mutate(positioningText)}
+              disabled={saveTextMutation.isPending || !positioningText}
+            >
+              {saveTextMutation.isPending ? "Saving…" : "Save positioning"}
+            </Button>
           </div>
         )}
       </Card>
 
-      {/* Approved leads without a draft */}
+      {/* Approved leads without any draft */}
       {leadsWithoutDraft.length > 0 && (
         <Card className="p-6">
           <h2 className="mb-3 text-base font-semibold">Approved — no draft yet</h2>
@@ -273,83 +264,118 @@ function EmailOutreachPage() {
 
       {/* Draft review queue */}
       <div className="flex items-center justify-between">
-        <h2 className="text-base font-semibold">Draft review queue</h2>
-        <Button
-          onClick={() => drafts.forEach((d) => approveMutation.mutate({ draftId: d.id, seq: sequenceId }))}
-          disabled={drafts.length === 0 || approveMutation.isPending}
-        >
-          Push all
-          <Badge variant="secondary" className="ml-2 bg-white/20 text-primary-foreground">
-            {drafts.length}
-          </Badge>
-        </Button>
+        <h2 className="text-base font-semibold">
+          Draft review queue
+          {leadGroups.length > 0 && (
+            <span className="ml-2 text-sm font-normal text-muted-foreground">
+              {leadGroups.length} lead{leadGroups.length !== 1 ? "s" : ""}
+            </span>
+          )}
+        </h2>
       </div>
 
       {isLoading ? (
         <p className="py-8 text-center text-sm text-muted-foreground">Loading drafts…</p>
-      ) : drafts.length === 0 ? (
+      ) : leadGroups.length === 0 ? (
         <EmptyState
           icon={Mail}
           message="No drafts ready. Approve leads in Lead Discovery first, then generate drafts."
         />
       ) : (
         <div className="space-y-4">
-          {drafts.map((d) => {
-            const edited = getEdited(d);
+          {leadGroups.map((group) => {
+            const activeDraftId = getActiveDraftId(group);
+            const activeDraftData = group.drafts.find((d) => d.id === activeDraftId)!;
+            const edited = getEdited(activeDraftData);
+            const hasMultiple = group.drafts.length > 1;
+
             return (
-              <Card key={d.id} className="p-6">
-                <div className="mb-4 flex items-start justify-between gap-4">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold">{d.leads?.name}</h3>
-                      <span className="text-sm text-muted-foreground">· {d.leads?.company}</span>
-                    </div>
-                    {d.leads?.email && (
-                      <p className="mt-0.5 text-xs text-muted-foreground">{d.leads.email}</p>
-                    )}
+              <Card key={group.lead_id} className="p-6">
+                {/* Lead header */}
+                <div className="mb-4">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold">{group.lead?.name}</h3>
+                    <span className="text-sm text-muted-foreground">· {group.lead?.company}</span>
                   </div>
-                  <StatusBadge label="Draft" tone="muted" />
+                  {group.lead?.email && (
+                    <p className="mt-0.5 text-xs text-muted-foreground">{group.lead.email}</p>
+                  )}
                 </div>
 
+                {/* Option tabs — only shown when multiple drafts exist */}
+                {hasMultiple && (
+                  <div className="mb-4 flex gap-1 rounded-md border p-1 w-fit">
+                    {group.drafts.map((d, i) => (
+                      <button
+                        key={d.id}
+                        onClick={() => setActiveDraft((prev) => ({ ...prev, [group.lead_id]: d.id }))}
+                        className={`rounded px-3 py-1 text-sm font-medium transition-colors ${
+                          d.id === activeDraftId
+                            ? "bg-foreground text-background"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        Option {i + 1}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Editable draft */}
                 <div className="space-y-2">
                   <Input
                     value={edited.subject}
                     onChange={(e) =>
-                      setLocalDrafts((prev) => ({ ...prev, [d.id]: { ...getEdited(d), subject: e.target.value } }))
+                      setLocalDrafts((prev) => ({
+                        ...prev,
+                        [activeDraftId]: { ...getEdited(activeDraftData), subject: e.target.value },
+                      }))
                     }
-                    onBlur={() => saveEdit(d)}
+                    onBlur={() => saveEdit(activeDraftData)}
                     placeholder="Subject"
                   />
                   <Textarea
                     rows={8}
                     value={edited.body}
                     onChange={(e) =>
-                      setLocalDrafts((prev) => ({ ...prev, [d.id]: { ...getEdited(d), body: e.target.value } }))
+                      setLocalDrafts((prev) => ({
+                        ...prev,
+                        [activeDraftId]: { ...getEdited(activeDraftData), body: e.target.value },
+                      }))
                     }
-                    onBlur={() => saveEdit(d)}
+                    onBlur={() => saveEdit(activeDraftData)}
                   />
                 </div>
 
-                <div className="mt-4 flex justify-end gap-2">
+                {/* Actions */}
+                <div className="mt-4 flex items-center justify-between">
                   <Button
                     size="sm"
                     variant="outline"
-                    className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
-                    onClick={() => generateDraftMutation.mutate(d.lead_id)}
+                    onClick={() => generateDraftMutation.mutate(group.lead_id)}
                     disabled={generateDraftMutation.isPending}
                   >
-                    <RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Regenerate
+                    <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+                    {hasMultiple ? "Generate another" : "Regenerate"}
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={() => deleteDraftMutation.mutate(d.id)}>
-                    Skip
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => approveMutation.mutate({ draftId: d.id, seq: sequenceId })}
-                    disabled={approveMutation.isPending}
-                  >
-                    Approve and push to Lemlist
-                  </Button>
+
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => deleteDraftMutation.mutate(activeDraftId)}
+                      disabled={deleteDraftMutation.isPending}
+                    >
+                      {hasMultiple ? "Discard this option" : "Skip"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => approveMutation.mutate(activeDraftId)}
+                      disabled={approveMutation.isPending}
+                    >
+                      Approve and push to Lemlist
+                    </Button>
+                  </div>
                 </div>
               </Card>
             );
