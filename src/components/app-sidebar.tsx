@@ -25,13 +25,11 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="none" className="border-r-0">
       <SidebarHeader className="px-4 py-5">
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-3">
           <img src={logoUrl} alt="InsightSphere" className="h-8 w-auto" />
-          <div className="leading-tight">
-            <div className="text-[10px] uppercase tracking-wide text-sidebar-foreground/60">
-              Outreach Hub
-            </div>
-          </div>
+          <span className="text-sm font-semibold text-sidebar-foreground">
+            Outreach Hub
+          </span>
         </div>
       </SidebarHeader>
       <SidebarContent className="px-2">
