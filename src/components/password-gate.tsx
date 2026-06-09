@@ -22,14 +22,9 @@ export function PasswordGate({ onUnlock }: { onUnlock: () => void }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
       <Card className="w-full max-w-sm p-8">
-        <div className="mb-6 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <Lock className="h-5 w-5" />
-          </div>
-          <div>
-            <h1 className="text-lg font-semibold">InsightSphere</h1>
-            <p className="text-xs text-muted-foreground">Outreach Hub</p>
-          </div>
+        <div className="mb-6 flex flex-col items-center gap-2 text-center">
+          <img src={logoDark} alt="Ingevr" className="h-9 w-auto" />
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Outreach Hub</p>
         </div>
         <form onSubmit={submit} className="space-y-3">
           <Input
