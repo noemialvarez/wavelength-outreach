@@ -68,7 +68,7 @@ type State = {
   sequences: SequenceRow[];
 };
 
-const KEY = "insightsphere-state-v1";
+const KEY = "insightsphere-state-v2";
 
 const seed = (): State => ({
   sources: [
