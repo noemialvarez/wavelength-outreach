@@ -5,6 +5,7 @@ export type LeadStatus = "Pending review" | "Approved" | "Skipped" | "Pushed";
 
 export type Source = { id: string; name: string; url: string; enabled: boolean };
 export type IcpFilters = {
+  companyNames: string[];
   titles: string[];
   industries: string[];
   companySize: string;
@@ -67,16 +68,41 @@ type State = {
   sequences: SequenceRow[];
 };
 
-const KEY = "insightsphere-state-v1";
+const KEY = "insightsphere-state-v2";
 
 const seed = (): State => ({
   sources: [
-    { id: "s1", name: "Wellfound", url: "https://wellfound.com", enabled: true },
-    { id: "s2", name: "Startupticker.ch", url: "https://startupticker.ch", enabled: true },
-    { id: "s3", name: "Swiss Startup Radar", url: "https://swissstartupradar.com", enabled: true },
-    { id: "s4", name: "Crunchbase", url: "https://crunchbase.com", enabled: false },
+    { id: "s1", name: "Wellfound", url: "https://wellfound.com/", enabled: true },
+    { id: "s2", name: "Y Combinator Jobs", url: "https://www.ycombinator.com/jobs", enabled: true },
+    { id: "s3", name: "Startup Digest", url: "https://www.startupdigest.com/", enabled: true },
+    { id: "s4", name: "Startupticker.ch", url: "https://www.startupticker.ch/", enabled: true },
+    { id: "s5", name: "Sifted", url: "https://sifted.eu/", enabled: true },
+    { id: "s6", name: "TechCrunch Startups", url: "https://techcrunch.com/startups/", enabled: true },
+    { id: "s7", name: "StrictlyVC", url: "https://www.strictlyvc.com/", enabled: true },
+    { id: "s8", name: "Semafor Business", url: "https://www.semafor.com/business", enabled: true },
+    { id: "s9", name: "Lenny's Newsletter", url: "https://www.lennysnewsletter.com/", enabled: true },
+    { id: "s10", name: "First Round Review", url: "https://review.firstround.com/", enabled: true },
+    { id: "s11", name: "Y Combinator Blog", url: "https://www.ycombinator.com/blog", enabled: true },
+    { id: "s12", name: "Not Boring", url: "https://www.notboring.co/", enabled: true },
+    { id: "s13", name: "Future (a16z)", url: "https://future.com/", enabled: true },
+    { id: "s14", name: "Latent Space", url: "https://www.latent.space/", enabled: true },
+    { id: "s15", name: "The Batch (DeepLearning.AI)", url: "https://www.deeplearning.ai/the-batch/", enabled: true },
+    { id: "s16", name: "Sequoia Articles", url: "https://www.sequoiacap.com/article/", enabled: true },
+    { id: "s17", name: "Bessemer Atlas", url: "https://www.bvp.com/atlas", enabled: true },
+    { id: "s18", name: "NFX Essays", url: "https://www.nfx.com/post", enabled: true },
+    { id: "s19", name: "a16z Newsletter", url: "https://a16z.com/newsletter/", enabled: true },
+    { id: "s20", name: "Meritech Blog", url: "https://www.meritechcapital.com/blog", enabled: true },
+    { id: "s21", name: "Tomasz Tunguz", url: "https://www.tomtunguz.com/", enabled: true },
+    { id: "s22", name: "Every", url: "https://www.every.to/", enabled: true },
+    { id: "s23", name: "The Information", url: "https://www.theinformation.com/", enabled: true },
+    { id: "s24", name: "Hacker News", url: "https://news.ycombinator.com/", enabled: true },
+    { id: "s25", name: "Product Hunt", url: "https://www.producthunt.com/", enabled: true },
+    { id: "s26", name: "Crunchbase", url: "https://www.crunchbase.com/", enabled: true },
+    { id: "s27", name: "Dealroom", url: "https://dealroom.co/", enabled: true },
+    { id: "s28", name: "Failory", url: "https://www.failory.com/", enabled: true },
   ],
   icp: {
+    companyNames: [],
     titles: ["CEO", "Head of Sales", "VP Marketing"],
     industries: ["SaaS", "Fintech"],
     companySize: "11-50",
