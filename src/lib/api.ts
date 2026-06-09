@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL ?? "http://localhost:3001",
+  baseURL: "https://wavelength-production-6609.up.railway.app",
 });
 
 // Attach Supabase JWT when present in localStorage
