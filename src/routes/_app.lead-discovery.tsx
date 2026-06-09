@@ -53,6 +53,7 @@ function LeadDiscoveryPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [localEmails, setLocalEmails] = useState<Record<string, string>>({});
 
   const queryClient = useQueryClient();
 
@@ -67,6 +68,13 @@ function LeadDiscoveryPage() {
       api.patch(`/api/leads/${id}`, { status }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["leads"] }),
     onError: () => toast.error("Failed to update lead status"),
+  });
+
+  const updateEmailMutation = useMutation({
+    mutationFn: ({ id, email }: { id: string; email: string }) =>
+      api.patch(`/api/leads/${id}`, { email }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["leads"] }),
+    onError: () => toast.error("Failed to save email"),
   });
 
   const scanMutation = useMutation({
@@ -369,6 +377,7 @@ function LeadDiscoveryPage() {
                   <TableHead>Signal</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Founder</TableHead>
+                  <TableHead>Email</TableHead>
                   <TableHead>LinkedIn</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Date</TableHead>
@@ -378,7 +387,7 @@ function LeadDiscoveryPage() {
               <TableBody>
                 {filtered.map((l: {
                   id: string; company: string; notes?: string; signalType?: SignalType;
-                  name: string; linkedin_url?: string; status: LeadStatus; created_at: string;
+                  name: string; email?: string; linkedin_url?: string; status: LeadStatus; created_at: string;
                 }) => (
                   <TableRow key={l.id}>
                     <TableCell>
@@ -397,6 +406,22 @@ function LeadDiscoveryPage() {
                       )}
                     </TableCell>
                     <TableCell>{l.name}</TableCell>
+                    <TableCell>
+                      <Input
+                        className="h-7 w-44 text-sm"
+                        placeholder="founder@co.com"
+                        value={localEmails[l.id] ?? l.email ?? ""}
+                        onChange={(e) =>
+                          setLocalEmails((prev) => ({ ...prev, [l.id]: e.target.value }))
+                        }
+                        onBlur={() => {
+                          const val = localEmails[l.id];
+                          if (val !== undefined && val !== (l.email ?? "")) {
+                            updateEmailMutation.mutate({ id: l.id, email: val });
+                          }
+                        }}
+                      />
+                    </TableCell>
                     <TableCell>
                       {l.linkedin_url && (
                         <a
