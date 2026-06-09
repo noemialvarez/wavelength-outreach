@@ -204,12 +204,32 @@ function LeadDiscoveryPage() {
         <div className="mb-4">
           <h2 className="text-base font-semibold">ICP filters</h2>
           <p className="text-xs text-muted-foreground">
-            Used to enrich leads through Sales Navigator. Saved automatically.
+            All filters are optional. Used to enrich leads through Sales Navigator. Saved automatically.
           </p>
         </div>
         <div className="grid grid-cols-2 gap-4">
+          <div className="col-span-2">
+            <label className="mb-1 block text-xs font-medium">
+              Company names <span className="text-muted-foreground">(optional)</span>
+            </label>
+            <Input
+              value={icp.companyNames.join(", ")}
+              onChange={(e) =>
+                store.set((s) => ({
+                  ...s,
+                  icp: {
+                    ...s.icp,
+                    companyNames: e.target.value.split(",").map((t) => t.trim()).filter(Boolean),
+                  },
+                }))
+              }
+              placeholder="e.g. Nordlys AI, Helvetia Robotics"
+            />
+          </div>
           <div>
-            <label className="mb-1 block text-xs font-medium">Target job titles</label>
+            <label className="mb-1 block text-xs font-medium">
+              Target job titles <span className="text-muted-foreground">(optional)</span>
+            </label>
             <Input
               value={icp.titles.join(", ")}
               onChange={(e) =>
@@ -225,7 +245,9 @@ function LeadDiscoveryPage() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium">Industries</label>
+            <label className="mb-1 block text-xs font-medium">
+              Industries <span className="text-muted-foreground">(optional)</span>
+            </label>
             <Input
               value={icp.industries.join(", ")}
               onChange={(e) =>
@@ -241,17 +263,20 @@ function LeadDiscoveryPage() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium">Company size</label>
+            <label className="mb-1 block text-xs font-medium">
+              Company size <span className="text-muted-foreground">(optional)</span>
+            </label>
             <Select
-              value={icp.companySize}
+              value={icp.companySize || "any"}
               onValueChange={(v) =>
-                store.set((s) => ({ ...s, icp: { ...s.icp, companySize: v } }))
+                store.set((s) => ({ ...s, icp: { ...s.icp, companySize: v === "any" ? "" : v } }))
               }
             >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="any">Any size</SelectItem>
                 <SelectItem value="1-10">1-10</SelectItem>
                 <SelectItem value="11-50">11-50</SelectItem>
                 <SelectItem value="51-200">51-200</SelectItem>
@@ -260,12 +285,15 @@ function LeadDiscoveryPage() {
             </Select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium">Geography</label>
+            <label className="mb-1 block text-xs font-medium">
+              Geography <span className="text-muted-foreground">(optional)</span>
+            </label>
             <Input
               value={icp.geography}
               onChange={(e) =>
                 store.set((s) => ({ ...s, icp: { ...s.icp, geography: e.target.value } }))
               }
+              placeholder="e.g. Switzerland, DACH, Europe"
             />
           </div>
         </div>
