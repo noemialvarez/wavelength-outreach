@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Plus, Play, Radar, Trash2, Search, Loader2 } from "lucide-react";
+import { Plus, Play, Radar, Trash2, Search, Loader2, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -33,7 +33,7 @@ export const Route = createFileRoute("/_app/lead-discovery")({
   component: LeadDiscoveryPage,
 });
 
-const signalTones: Record<SignalType, "turquoise" | "pink" | "blue" | "muted"> = {
+const signalTones: Record<string, "turquoise" | "pink" | "blue" | "muted"> = {
   Funding: "turquoise",
   "Key hire": "blue",
   "Product launch": "pink",
@@ -44,6 +44,19 @@ const statusTones: Record<LeadStatus, "turquoise" | "pink" | "blue" | "muted"> =
   Approved: "turquoise",
   Skipped: "muted",
   Pushed: "blue",
+};
+
+type DiscoverySignal = {
+  id: string;
+  company_name: string | null;
+  signal_url: string | null;
+  source: string;
+  status: string;
+  created_at: string;
+  raw_data: {
+    signal_description?: string;
+    signal_type?: string;
+  } | null;
 };
 
 function LeadDiscoveryPage() {
@@ -57,11 +70,38 @@ function LeadDiscoveryPage() {
 
   const queryClient = useQueryClient();
 
-  const { data: leadsData, isLoading } = useQuery({
+  const { data: signalsData, isLoading: signalsLoading } = useQuery({
+    queryKey: ["signals"],
+    queryFn: () =>
+      api
+        .get("/api/discovery/signals", { params: { status: "new", limit: 100 } })
+        .then((r) => (r.data.data ?? []) as DiscoverySignal[]),
+  });
+  const newSignals = signalsData ?? [];
+
+  const { data: leadsData, isLoading: leadsLoading } = useQuery({
     queryKey: ["leads"],
     queryFn: () => api.get("/api/leads", { params: { limit: 200 } }).then((r) => r.data.data ?? []),
   });
   const leads = leadsData ?? [];
+
+  const approveMutation = useMutation({
+    mutationFn: (id: string) => api.post(`/api/discovery/signals/${id}/promote`),
+    onSuccess: () => {
+      toast.success("Lead created from signal");
+      queryClient.invalidateQueries({ queryKey: ["signals"] });
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+    },
+    onError: () => toast.error("Failed to approve signal"),
+  });
+
+  const dismissMutation = useMutation({
+    mutationFn: (id: string) => api.post(`/api/discovery/signals/${id}/dismiss`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["signals"] });
+    },
+    onError: () => toast.error("Failed to dismiss signal"),
+  });
 
   const updateStatusMutation = useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) =>
@@ -106,7 +146,10 @@ function LeadDiscoveryPage() {
     },
     onSuccess: () => {
       toast.success("Signal scan started — results will appear shortly");
-      setTimeout(() => queryClient.invalidateQueries({ queryKey: ["leads"] }), 8000);
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["leads"] });
+        queryClient.invalidateQueries({ queryKey: ["signals"] });
+      }, 8000);
     },
     onError: () => toast.error("Scan failed — check backend connection"),
   });
@@ -327,6 +370,102 @@ function LeadDiscoveryPage() {
         </div>
       </Card>
 
+      {/* Signals */}
+      <Card className="p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Zap className="h-4 w-4 text-brand-turquoise" />
+            <h2 className="text-base font-semibold">Signals</h2>
+            {newSignals.length > 0 && (
+              <span className="rounded-full bg-brand-turquoise/15 px-2 py-0.5 text-xs font-medium text-brand-turquoise">
+                {newSignals.length} new
+              </span>
+            )}
+          </div>
+        </div>
+
+        {signalsLoading ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">Loading signals…</p>
+        ) : newSignals.length === 0 ? (
+          <EmptyState icon={Zap} message="No new signals. Run a scan to pull fresh results." />
+        ) : (
+          <div className="overflow-hidden rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Company</TableHead>
+                  <TableHead>Signal</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Source</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {newSignals.map((sig) => {
+                  const signalType = sig.raw_data?.signal_type;
+                  const signalDesc = sig.raw_data?.signal_description;
+                  const isApproving = approveMutation.isPending && approveMutation.variables === sig.id;
+                  const isDismissing = dismissMutation.isPending && dismissMutation.variables === sig.id;
+                  return (
+                    <TableRow key={sig.id}>
+                      <TableCell className="font-medium">{sig.company_name ?? "—"}</TableCell>
+                      <TableCell className="max-w-sm text-sm text-muted-foreground">
+                        {sig.signal_url ? (
+                          <a
+                            href={sig.signal_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="hover:underline"
+                          >
+                            {signalDesc ?? sig.signal_url}
+                          </a>
+                        ) : (
+                          signalDesc ?? "—"
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {signalType && (
+                          <StatusBadge
+                            label={signalType}
+                            tone={signalTones[signalType] ?? "muted"}
+                          />
+                        )}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{sig.source}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {sig.created_at?.slice(0, 10)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1.5">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
+                            onClick={() => approveMutation.mutate(sig.id)}
+                            disabled={isApproving || isDismissing}
+                          >
+                            {isApproving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Approve"}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => dismissMutation.mutate(sig.id)}
+                            disabled={isApproving || isDismissing}
+                          >
+                            {isDismissing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Skip"}
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </Card>
+
       {/* Leads table */}
       <Card className="p-6">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -383,7 +522,7 @@ function LeadDiscoveryPage() {
           </div>
         )}
 
-        {isLoading ? (
+        {leadsLoading ? (
           <p className="py-8 text-center text-sm text-muted-foreground">Loading leads…</p>
         ) : filtered.length === 0 ? (
           <EmptyState icon={Radar} message="No leads yet. Configure your sources and run a scan." />
@@ -422,7 +561,7 @@ function LeadDiscoveryPage() {
                     </TableCell>
                     <TableCell>
                       {l.signalType && (
-                        <StatusBadge label={l.signalType} tone={signalTones[l.signalType]} />
+                        <StatusBadge label={l.signalType} tone={signalTones[l.signalType] ?? "muted"} />
                       )}
                     </TableCell>
                     <TableCell>{l.name}</TableCell>
