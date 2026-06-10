@@ -102,7 +102,7 @@ function LeadDiscoveryPage() {
       const enabledSources = sources
         .filter((s) => s.enabled)
         .map((s) => s.name.toLowerCase().replace(/\s+/g, ""));
-      return api.post("/api/discovery/runs", { sources: enabledSources });
+      return api.post("/api/discovery/scan", { sources: enabledSources });
     },
     onSuccess: () => {
       toast.success("Signal scan started — results will appear shortly");
