@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Plus, Play, Radar, Trash2, Search, Loader2, Zap } from "lucide-react";
+import { Plus, Play, Radar, Trash2, Search, Loader2, Zap, UserSearch } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -133,6 +133,25 @@ function LeadDiscoveryPage() {
       const msg =
         (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
         "Apollo lookup failed";
+      toast.error(msg);
+    },
+  });
+
+  const findFounderMutation = useMutation({
+    mutationFn: (id: string) =>
+      api.post(`/api/leads/${id}/find-founder`).then((r) => r.data as { found: boolean; name?: string; linkedin_url?: string }),
+    onSuccess: (data) => {
+      if (data.found) {
+        toast.success(`Founder found${data.name ? `: ${data.name}` : ""}`);
+        queryClient.invalidateQueries({ queryKey: ["leads"] });
+      } else {
+        toast.info("No founder found on LinkedIn for this company");
+      }
+    },
+    onError: (err: unknown) => {
+      const msg =
+        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
+        "Founder search failed";
       toast.error(msg);
     },
   });
@@ -617,6 +636,20 @@ function LeadDiscoveryPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1.5">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          title="Find founder via LinkedIn"
+                          onClick={() => findFounderMutation.mutate(l.id)}
+                          disabled={findFounderMutation.isPending && findFounderMutation.variables === l.id}
+                        >
+                          {findFounderMutation.isPending && findFounderMutation.variables === l.id ? (
+                            <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <UserSearch className="mr-1.5 h-3.5 w-3.5" />
+                          )}
+                          Find founder
+                        </Button>
                         <Button
                           size="sm"
                           variant="outline"
