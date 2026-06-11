@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { EmptyState } from "@/components/empty-state";
 import api from "@/lib/api";
+import { useStore, store } from "@/lib/store";
 
 export const Route = createFileRoute("/_app/email-outreach")({
   head: () => ({ meta: [{ title: "Email Outreach — Wavelength" }] }),
@@ -38,6 +39,7 @@ function EmailOutreachPage() {
 
   const [settingsOpen, setSettingsOpen] = useState(true);
   const [positioningText, setPositioningText] = useState("");
+  const lemlistSequenceId = useStore((s) => s.emailSettings.lemlistSequenceId);
   const [uploadedFilename, setUploadedFilename] = useState<string | null>(null);
   // localDrafts: per-draft edits keyed by draft id
   const [localDrafts, setLocalDrafts] = useState<Record<string, { subject: string; body: string }>>({});
@@ -232,6 +234,20 @@ function EmailOutreachPage() {
             >
               {saveTextMutation.isPending ? "Saving…" : "Save positioning"}
             </Button>
+
+            <div className="mt-5">
+              <label className="mb-1.5 block text-xs font-medium">Lemlist sequence ID</label>
+              <Input
+                placeholder="cam_xxxxxxxxxxxx"
+                value={lemlistSequenceId}
+                onChange={(e) =>
+                  store.set((s) => ({
+                    ...s,
+                    emailSettings: { ...s.emailSettings, lemlistSequenceId: e.target.value },
+                  }))
+                }
+              />
+            </div>
           </div>
         )}
       </Card>
