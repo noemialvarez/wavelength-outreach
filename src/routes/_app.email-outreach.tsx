@@ -159,10 +159,16 @@ function EmailOutreachPage() {
 
   const approveMutation = useMutation({
     mutationFn: (draftId: string) => api.post(`/api/outreach/approve/${draftId}`, {}),
-    onSuccess: (_res, draftId) => {
+    onSuccess: (res, draftId) => {
       const draft = drafts.find((d) => d.id === draftId);
       const name = draft?.leads?.name ?? "Lead";
-      toast.success(`${name} — draft approved. Will push to Lemlist once API key is configured.`);
+      const pushed: boolean = res.data?.pushed;
+      const skipReason: string | undefined = res.data?.lemlist?.reason;
+      if (pushed) {
+        toast.success(`${name} — pushed to Lemlist`);
+      } else {
+        toast.info(`${name} — approved but not pushed: ${skipReason ?? "check Railway logs"}`);
+      }
       queryClient.invalidateQueries({ queryKey: ["drafts"] });
       queryClient.invalidateQueries({ queryKey: ["leads"] });
     },
