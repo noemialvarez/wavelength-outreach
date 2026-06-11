@@ -26,7 +26,7 @@ export type Lead = {
 export type EmailSettings = {
   positioningFileName: string;
   toneNotes: string;
-  lemlistSequenceId: string;
+  lemlistCampaignId: string;
 };
 export type Prospect = {
   id: string;
@@ -158,7 +158,7 @@ const seed = (): State => ({
   emailSettings: {
     positioningFileName: "",
     toneNotes: "Direct, warm, Swiss German business context. Short sentences.",
-    lemlistSequenceId: "",
+    lemlistCampaignId: "",
   },
   prospects: [
     {

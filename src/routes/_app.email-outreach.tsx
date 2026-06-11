@@ -39,7 +39,7 @@ function EmailOutreachPage() {
 
   const [settingsOpen, setSettingsOpen] = useState(true);
   const [positioningText, setPositioningText] = useState("");
-  const lemlistSequenceId = useStore((s) => s.emailSettings.lemlistSequenceId);
+  const lemlistCampaignId = useStore((s) => s.emailSettings.lemlistCampaignId);
   const [uploadedFilename, setUploadedFilename] = useState<string | null>(null);
   // localDrafts: per-draft edits keyed by draft id
   const [localDrafts, setLocalDrafts] = useState<Record<string, { subject: string; body: string }>>({});
@@ -245,11 +245,11 @@ function EmailOutreachPage() {
               <label className="mb-1.5 block text-xs font-medium">Lemlist campaign ID</label>
               <Input
                 placeholder="cam_xxxxxxxxxxxx"
-                value={lemlistSequenceId}
+                value={lemlistCampaignId}
                 onChange={(e) =>
                   store.set((s) => ({
                     ...s,
-                    emailSettings: { ...s.emailSettings, lemlistSequenceId: e.target.value },
+                    emailSettings: { ...s.emailSettings, lemlistCampaignId: e.target.value },
                   }))
                 }
               />
@@ -257,7 +257,7 @@ function EmailOutreachPage() {
                 size="sm"
                 className="mt-2"
                 variant="outline"
-                onClick={() => saveCampaignIdMutation.mutate(lemlistSequenceId)}
+                onClick={() => saveCampaignIdMutation.mutate(lemlistCampaignId)}
                 disabled={saveCampaignIdMutation.isPending}
               >
                 {saveCampaignIdMutation.isPending ? "Saving…" : "Save campaign ID"}
