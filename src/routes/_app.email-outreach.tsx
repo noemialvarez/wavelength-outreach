@@ -117,7 +117,13 @@ function EmailOutreachPage() {
   const saveCampaignIdMutation = useMutation({
     mutationFn: (id: string) => api.put("/api/outreach/settings", { lemlist_campaign_id: id }),
     onSuccess: () => toast.success("Campaign ID saved"),
-    onError: () => toast.error("Failed to save campaign ID"),
+    onError: (err: unknown) => {
+      const serverMsg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      const msg = serverMsg ?? (err as Error)?.message ?? "Unknown error";
+      console.error("[saveCampaignId] failed", { status, msg, err });
+      toast.error(`Failed to save campaign ID: ${msg}`);
+    },
   });
 
   const saveTextMutation = useMutation({
