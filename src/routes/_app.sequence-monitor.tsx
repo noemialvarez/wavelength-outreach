@@ -40,9 +40,6 @@ const STATUS_TONE: Record<string, "turquoise" | "pink" | "blue" | "muted"> = {
   Replied: "turquoise",
   Bounced: "muted",
   Unsubscribed: "muted",
-  ongoing: "blue",
-  paused: "muted",
-  finished: "turquoise",
 };
 
 function fmt(dateStr?: string) {
@@ -63,18 +60,22 @@ function SequenceMonitorPage() {
   const syncMutation = useMutation({
     mutationFn: () => api.post("/api/sequences/sync"),
     onSuccess: (r) => {
-      toast.success(`Synced ${r.data.synced_sequences} campaigns, ${r.data.synced_leads} leads`);
+      toast.success(`Synced ${r.data.synced_leads} leads from Lemlist`);
       queryClient.invalidateQueries({ queryKey: ["sequence-leads"] });
     },
-    onError: () => toast.error("Sync failed — check Lemlist API key"),
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
+        ?? "Sync failed — check Lemlist API key and campaign ID in Settings";
+      toast.error(msg);
+    },
   });
 
   const main = seqLeads.filter((r) => !flagged.has(r.id));
   const flaggedRows = seqLeads.filter((r) => flagged.has(r.id));
 
-  const active = seqLeads.filter((r) => r.status === "Active" || r.status === "ongoing").length;
+  const active = seqLeads.filter((r) => r.status === "Active").length;
   const openedNoReply = seqLeads.filter((r) => r.status === "Opened").length;
-  const replied = seqLeads.filter((r) => r.status === "Replied" || r.status === "finished").length;
+  const replied = seqLeads.filter((r) => r.status === "Replied").length;
   const bounced = seqLeads.filter((r) => r.status === "Bounced").length;
 
   return (
