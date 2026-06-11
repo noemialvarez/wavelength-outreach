@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 
 export const Route = createFileRoute("/_app/sequence-monitor")({
-  head: () => ({ meta: [{ title: "Sequence Monitor — Wavelength" }] }),
+  head: () => ({ meta: [{ title: "Campaign Monitor — Wavelength" }] }),
   component: SequenceMonitorPage,
 });
 
@@ -63,7 +63,7 @@ function SequenceMonitorPage() {
   const syncMutation = useMutation({
     mutationFn: () => api.post("/api/sequences/sync"),
     onSuccess: (r) => {
-      toast.success(`Synced ${r.data.synced_sequences} sequences, ${r.data.synced_leads} leads`);
+      toast.success(`Synced ${r.data.synced_sequences} campaigns, ${r.data.synced_leads} leads`);
       queryClient.invalidateQueries({ queryKey: ["sequence-leads"] });
     },
     onError: () => toast.error("Sync failed — check Lemlist API key"),
@@ -81,7 +81,7 @@ function SequenceMonitorPage() {
     <div className="mx-auto max-w-7xl space-y-6 p-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Sequence Monitor</h1>
+          <h1 className="text-2xl font-semibold">Campaign Monitor</h1>
           <p className="text-sm text-muted-foreground">
             Track how your outreach is performing and rescue warm opens.
           </p>
@@ -94,7 +94,7 @@ function SequenceMonitorPage() {
 
       <div className="grid grid-cols-4 gap-4">
         {[
-          { label: "Active in sequence", value: active, tone: "text-brand-blue" },
+          { label: "Active in campaign", value: active, tone: "text-brand-blue" },
           { label: "Opened, no reply", value: openedNoReply, tone: "text-primary" },
           { label: "Replied", value: replied, tone: "text-brand-turquoise" },
           { label: "Bounced", value: bounced, tone: "text-muted-foreground" },
@@ -107,13 +107,13 @@ function SequenceMonitorPage() {
       </div>
 
       <Card className="p-6">
-        <h2 className="mb-4 text-base font-semibold">Active sequences</h2>
+        <h2 className="mb-4 text-base font-semibold">Active campaigns</h2>
         {isLoading ? (
           <p className="py-8 text-center text-sm text-muted-foreground">Loading…</p>
         ) : main.length === 0 ? (
           <EmptyState
             icon={Activity}
-            message="No active sequences. Push leads from Email Outreach or sync from Lemlist."
+            message="No active campaigns. Push leads from Email Outreach or sync from Lemlist."
           />
         ) : (
           <div className="overflow-hidden rounded-md border">
@@ -122,7 +122,7 @@ function SequenceMonitorPage() {
                 <TableRow>
                   <TableHead>Lead</TableHead>
                   <TableHead>Company</TableHead>
-                  <TableHead>Sequence</TableHead>
+                  <TableHead>Campaign</TableHead>
                   <TableHead>Step</TableHead>
                   <TableHead>Last activity</TableHead>
                   <TableHead>Status</TableHead>
@@ -179,7 +179,7 @@ function SequenceMonitorPage() {
                 <TableRow>
                   <TableHead>Lead</TableHead>
                   <TableHead>Company</TableHead>
-                  <TableHead>Sequence</TableHead>
+                  <TableHead>Campaign</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Notes</TableHead>
                 </TableRow>

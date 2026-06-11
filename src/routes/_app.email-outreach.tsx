@@ -236,7 +236,7 @@ function EmailOutreachPage() {
             </Button>
 
             <div className="mt-5">
-              <label className="mb-1.5 block text-xs font-medium">Lemlist sequence ID</label>
+              <label className="mb-1.5 block text-xs font-medium">Lemlist campaign ID</label>
               <Input
                 placeholder="cam_xxxxxxxxxxxx"
                 value={lemlistSequenceId}

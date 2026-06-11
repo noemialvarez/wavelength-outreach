@@ -16,7 +16,7 @@ const items = [
   { title: "Lead Discovery", url: "/lead-discovery", icon: Radar },
   { title: "Email Outreach", url: "/email-outreach", icon: Mail },
   { title: "Prospect Engagement", url: "/prospect-engagement", icon: MessageCircle },
-  { title: "Sequence Monitor", url: "/sequence-monitor", icon: Activity },
+  { title: "Campaign Monitor", url: "/sequence-monitor", icon: Activity },
 ];
 
 export function AppSidebar() {
