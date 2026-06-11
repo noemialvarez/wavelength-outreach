@@ -114,6 +114,12 @@ function EmailOutreachPage() {
     },
   });
 
+  const saveCampaignIdMutation = useMutation({
+    mutationFn: (id: string) => api.put("/api/outreach/settings", { lemlist_campaign_id: id }),
+    onSuccess: () => toast.success("Campaign ID saved"),
+    onError: () => toast.error("Failed to save campaign ID"),
+  });
+
   const saveTextMutation = useMutation({
     mutationFn: (content: string) => api.put("/api/outreach/positioning", { content }),
     onSuccess: () => {
@@ -247,6 +253,15 @@ function EmailOutreachPage() {
                   }))
                 }
               />
+              <Button
+                size="sm"
+                className="mt-2"
+                variant="outline"
+                onClick={() => saveCampaignIdMutation.mutate(lemlistSequenceId)}
+                disabled={saveCampaignIdMutation.isPending}
+              >
+                {saveCampaignIdMutation.isPending ? "Saving…" : "Save campaign ID"}
+              </Button>
             </div>
           </div>
         )}
