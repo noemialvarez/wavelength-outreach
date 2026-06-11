@@ -26,6 +26,7 @@ export const Route = createFileRoute("/_app/sequence-monitor")({
 
 type SeqLead = {
   id: string;
+  lemlist_lead_id?: string;
   email?: string;
   name?: string;
   company?: string;
@@ -137,7 +138,7 @@ function SequenceMonitorPage() {
                   const opened = row.status === "Opened";
                   return (
                     <TableRow key={row.id} className={cn(opened && "bg-primary/5")}>
-                      <TableCell className="font-medium">{row.leads?.name ?? row.name ?? row.email}</TableCell>
+                      <TableCell className="font-medium">{row.leads?.name ?? row.name ?? row.email ?? row.lemlist_lead_id ?? "—"}</TableCell>
                       <TableCell>{row.leads?.company ?? row.company ?? "—"}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{row.sequences?.name}</TableCell>
                       <TableCell>{row.step ? `Step ${row.step}` : "—"}</TableCell>
