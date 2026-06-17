@@ -572,24 +572,18 @@ function LeadDiscoveryPage() {
             <h2 className="text-base font-semibold">By sources</h2>
             <p className="text-xs text-muted-foreground">Toggle which feeds power your scan.</p>
           </div>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                store.set((s) => ({
-                  ...s,
-                  sources: [...s.sources, { id: uid(), name: "", url: "", enabled: true }],
-                }))
-              }
-            >
-              <Plus className="mr-1.5 h-4 w-4" /> Add source
-            </Button>
-            <Button size="sm" onClick={() => scanMutation.mutate()} disabled={scanMutation.isPending}>
-              <Play className="mr-1.5 h-4 w-4" />
-              {scanMutation.isPending ? "Scanning..." : "Run signal scan"}
-            </Button>
-          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              store.set((s) => ({
+                ...s,
+                sources: [...s.sources, { id: uid(), name: "", url: "", enabled: true }],
+              }))
+            }
+          >
+            <Plus className="mr-1.5 h-4 w-4" /> Add source
+          </Button>
         </div>
         <div className="space-y-2">
           {(showAllSources ? sources : sources.slice(0, 3)).map((src) => (
