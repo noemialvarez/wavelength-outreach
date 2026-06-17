@@ -35,6 +35,9 @@ ________________________________________
 About
 Built by Noemi Alvarez, founder of InsightSphere — — Conversational AI startup transforming website interactions into qualified revenue opportunities.
 ________________________________________
-How it Works - **Demo**
-
+**Screenshots**
+-Campaign Monitor: https://github.com/noemialvarez/wavelength-outreach/blob/00fa7e4e0ad043c8f5c59fcfd23edc02ede3c8c8/wavelength%20screenshot%204.png
+-Email Outreach Composer: https://github.com/noemialvarez/wavelength-outreach/blob/00fa7e4e0ad043c8f5c59fcfd23edc02ede3c8c8/wavelength%20screenshot%203.png
+-Overview Leads Selected: https://github.com/noemialvarez/wavelength-outreach/blob/00fa7e4e0ad043c8f5c59fcfd23edc02ede3c8c8/wavelength%20screenshot%202.png
+-List of Companies with Signals: https://github.com/noemialvarez/wavelength-outreach/blob/00fa7e4e0ad043c8f5c59fcfd23edc02ede3c8c8/wavelength%20screenshot%201.png
 
