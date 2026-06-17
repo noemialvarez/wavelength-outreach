@@ -724,7 +724,7 @@ function LeadDiscoveryPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {newSignals.map((sig) => {
+                  {(showAllSignals ? newSignals : newSignals.slice(0, 5)).map((sig) => {
                     const signalType = sig.raw_data?.signal_type;
                     const signalDesc = sig.raw_data?.signal_description;
                     const isApproving = approveMutation.isPending && approveMutation.variables === sig.id;
@@ -784,6 +784,17 @@ function LeadDiscoveryPage() {
                   })}
                 </TableBody>
               </Table>
+            </div>
+          )}
+          {newSignals.length > 5 && (
+            <div className="mt-3">
+              <button
+                type="button"
+                onClick={() => setShowAllSignals((v) => !v)}
+                className="text-sm font-medium text-brand-blue hover:underline"
+              >
+                {showAllSignals ? "Hide signals" : `Show all signals (${newSignals.length})`}
+              </button>
             </div>
           )}
         </div>
