@@ -332,8 +332,6 @@ function LeadDiscoveryPage() {
         <div className="flex justify-end pt-4">
           <Button
             size="sm"
-            variant="outline"
-            className="border-brand-pink text-brand-pink hover:bg-brand-pink hover:text-white"
             onClick={() => toast.success("ICP search queued — results will appear shortly")}
           >
             <Search className="mr-1.5 h-4 w-4" /> Find matching ICP
