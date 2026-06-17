@@ -286,7 +286,7 @@ function LeadDiscoveryPage() {
       {/* Option 1 — ICP filters */}
       <Card className="p-6">
         <div className="mb-4">
-          <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-brand-pink">
+          <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-brand-blue">
             Option 1
           </div>
           <h2 className="text-base font-semibold">By ICP filters</h2>
