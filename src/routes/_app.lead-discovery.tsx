@@ -64,6 +64,18 @@ type DiscoverySignal = {
   } | null;
 };
 
+type DescriptionMatch = {
+  id?: string;
+  company: string;
+  website?: string;
+  url?: string;
+  industry?: string;
+  geography?: string;
+  description?: string;
+  whyMatches?: string;
+  why_it_matches?: string;
+};
+
 function LeadDiscoveryPage() {
   const sources = useStore((s) => s.sources);
   const icp = useStore((s) => s.icp);
