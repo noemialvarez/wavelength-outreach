@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { MultiSelect } from "@/components/ui/multi-select";
 import {
   Table,
   TableBody,
@@ -87,10 +88,10 @@ function LeadDiscoveryPage() {
   const [showAllSources, setShowAllSources] = useState(false);
   const [descQuery, setDescQuery] = useState({
     description: "",
-    industry: "",
+    industries: [] as string[],
     geography: "",
     audience: "B2B" as "B2B" | "B2C",
-    size: "",
+    sizes: [] as string[],
   });
   const [descResults, setDescResults] = useState<DescriptionMatch[]>([]);
   const [approvedMatches, setApprovedMatches] = useState<Set<string>>(new Set());
@@ -206,10 +207,10 @@ function LeadDiscoveryPage() {
       api
         .post("/api/discovery/by-description", {
           description: descQuery.description,
-          industry: descQuery.industry,
+          industries: descQuery.industries,
           geography: descQuery.geography,
           audience: descQuery.audience,
-          companySize: descQuery.size,
+          companySizes: descQuery.sizes,
         })
         .then((r) => {
           const d = r.data;
@@ -334,44 +335,41 @@ function LeadDiscoveryPage() {
             <label className="mb-1 block text-xs font-medium">
               Industries <span className="text-muted-foreground">(optional)</span>
             </label>
-            <Input
-              value={icp.industries.join(", ")}
-              onChange={(e) =>
-                store.set((s) => ({
-                  ...s,
-                  icp: {
-                    ...s.icp,
-                    industries: e.target.value.split(",").map((t) => t.trim()).filter(Boolean),
-                  },
-                }))
-              }
-              placeholder="SaaS, Fintech"
+            <MultiSelect
+              options={[
+                { value: "SaaS", label: "SaaS" },
+                { value: "Fintech", label: "Fintech" },
+                { value: "Healthtech", label: "Healthtech" },
+                { value: "E-commerce", label: "E-commerce" },
+                { value: "Manufacturing", label: "Manufacturing" },
+                { value: "Logistics", label: "Logistics" },
+                { value: "Media", label: "Media" },
+                { value: "Education", label: "Education" },
+                { value: "Energy", label: "Energy" },
+              ]}
+              value={icp.industries}
+              onChange={(v) => store.set((s) => ({ ...s, icp: { ...s.icp, industries: v } }))}
+              placeholder="Select industries"
             />
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium">
               Company size <span className="text-muted-foreground">(optional)</span>
             </label>
-            <Select
-              value={icp.companySize || "any"}
-              onValueChange={(v) =>
-                store.set((s) => ({ ...s, icp: { ...s.icp, companySize: v === "any" ? "" : v } }))
-              }
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="any">Any size</SelectItem>
-                <SelectItem value="1-10">1-10</SelectItem>
-                <SelectItem value="11-50">11-50</SelectItem>
-                <SelectItem value="51-200">51-200</SelectItem>
-                <SelectItem value="201-500">201-500</SelectItem>
-                <SelectItem value="501-1000">501-1000</SelectItem>
-                <SelectItem value="1001-5000">1001-5000</SelectItem>
-                <SelectItem value=">5000">&gt;5000</SelectItem>
-              </SelectContent>
-            </Select>
+            <MultiSelect
+              options={[
+                { value: "1-10", label: "1-10" },
+                { value: "11-50", label: "11-50" },
+                { value: "51-200", label: "51-200" },
+                { value: "201-500", label: "201-500" },
+                { value: "501-1000", label: "501-1000" },
+                { value: "1001-5000", label: "1001-5000" },
+                { value: ">5000", label: ">5000" },
+              ]}
+              value={icp.companySizes}
+              onChange={(v) => store.set((s) => ({ ...s, icp: { ...s.icp, companySizes: v } }))}
+              placeholder="Select sizes"
+            />
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium">
@@ -422,28 +420,22 @@ function LeadDiscoveryPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="mb-1 block text-xs font-medium">Industry</label>
-              <Select
-                value={descQuery.industry || "any"}
-                onValueChange={(v) =>
-                  setDescQuery((q) => ({ ...q, industry: v === "any" ? "" : v }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Any industry" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="any">Any industry</SelectItem>
-                  <SelectItem value="SaaS">SaaS</SelectItem>
-                  <SelectItem value="Fintech">Fintech</SelectItem>
-                  <SelectItem value="Healthtech">Healthtech</SelectItem>
-                  <SelectItem value="E-commerce">E-commerce</SelectItem>
-                  <SelectItem value="Manufacturing">Manufacturing</SelectItem>
-                  <SelectItem value="Logistics">Logistics</SelectItem>
-                  <SelectItem value="Media">Media</SelectItem>
-                  <SelectItem value="Education">Education</SelectItem>
-                  <SelectItem value="Energy">Energy</SelectItem>
-                </SelectContent>
-              </Select>
+              <MultiSelect
+                options={[
+                  { value: "SaaS", label: "SaaS" },
+                  { value: "Fintech", label: "Fintech" },
+                  { value: "Healthtech", label: "Healthtech" },
+                  { value: "E-commerce", label: "E-commerce" },
+                  { value: "Manufacturing", label: "Manufacturing" },
+                  { value: "Logistics", label: "Logistics" },
+                  { value: "Media", label: "Media" },
+                  { value: "Education", label: "Education" },
+                  { value: "Energy", label: "Energy" },
+                ]}
+                value={descQuery.industries}
+                onChange={(v) => setDescQuery((q) => ({ ...q, industries: v }))}
+                placeholder="Select industries"
+              />
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium">Geography</label>
@@ -474,26 +466,20 @@ function LeadDiscoveryPage() {
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium">Company size</label>
-              <Select
-                value={descQuery.size || "any"}
-                onValueChange={(v) =>
-                  setDescQuery((q) => ({ ...q, size: v === "any" ? "" : v }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Any size" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="any">Any size</SelectItem>
-                  <SelectItem value="1-10">1-10</SelectItem>
-                  <SelectItem value="11-50">11-50</SelectItem>
-                  <SelectItem value="51-200">51-200</SelectItem>
-                  <SelectItem value="201-500">201-500</SelectItem>
-                  <SelectItem value="501-1000">501-1000</SelectItem>
-                  <SelectItem value="1001-5000">1001-5000</SelectItem>
-                  <SelectItem value=">5000">&gt;5000</SelectItem>
-                </SelectContent>
-              </Select>
+              <MultiSelect
+                options={[
+                  { value: "1-10", label: "1-10" },
+                  { value: "11-50", label: "11-50" },
+                  { value: "51-200", label: "51-200" },
+                  { value: "201-500", label: "201-500" },
+                  { value: "501-1000", label: "501-1000" },
+                  { value: "1001-5000", label: "1001-5000" },
+                  { value: ">5000", label: ">5000" },
+                ]}
+                value={descQuery.sizes}
+                onChange={(v) => setDescQuery((q) => ({ ...q, sizes: v }))}
+                placeholder="Select sizes"
+              />
             </div>
           </div>
           <div className="flex justify-end">

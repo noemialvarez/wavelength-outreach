@@ -8,7 +8,7 @@ export type IcpFilters = {
   companyNames: string[];
   titles: string[];
   industries: string[];
-  companySize: string;
+  companySizes: string[];
   geography: string;
 };
 export type Lead = {
@@ -107,7 +107,7 @@ const seed = (): State => ({
     companyNames: [],
     titles: ["CEO", "Head of Sales", "VP Marketing"],
     industries: ["SaaS", "Fintech"],
-    companySize: "11-50",
+    companySizes: ["11-50"],
     geography: "Switzerland",
   },
   leads: [
@@ -244,7 +244,15 @@ let state: State = (() => {
   if (typeof window === "undefined") return seed();
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) return JSON.parse(raw) as State;
+    if (raw) {
+      const parsed = JSON.parse(raw) as any;
+      // migrate v3 -> v4: companySize string -> companySizes array
+      if (parsed?.icp && typeof parsed.icp.companySize === "string") {
+        parsed.icp.companySizes = parsed.icp.companySize ? [parsed.icp.companySize] : [];
+        delete parsed.icp.companySize;
+      }
+      return parsed as State;
+    }
   } catch {
     /* ignore */
   }
