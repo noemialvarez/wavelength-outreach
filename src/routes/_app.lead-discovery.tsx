@@ -901,7 +901,16 @@ function LeadDiscoveryPage() {
               {filtered.length} of {leads.length} leads
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
+            {collapsedSections.size > 0 && (
+              <button
+                type="button"
+                onClick={expandAllSections}
+                className="text-sm font-medium text-brand-blue hover:underline"
+              >
+                Show all
+              </button>
+            )}
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-40">
                 <SelectValue placeholder="Status" />
