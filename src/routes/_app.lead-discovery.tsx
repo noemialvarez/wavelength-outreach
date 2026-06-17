@@ -89,6 +89,7 @@ function LeadDiscoveryPage() {
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [localEmails, setLocalEmails] = useState<Record<string, string>>({});
   const [showAllSources, setShowAllSources] = useState(false);
+  const [showAllSignals, setShowAllSignals] = useState(false);
   const [descQuery, setDescQuery] = useState({
     description: "",
     industries: [] as string[],
@@ -723,7 +724,7 @@ function LeadDiscoveryPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {newSignals.map((sig) => {
+                  {(showAllSignals ? newSignals : newSignals.slice(0, 5)).map((sig) => {
                     const signalType = sig.raw_data?.signal_type;
                     const signalDesc = sig.raw_data?.signal_description;
                     const isApproving = approveMutation.isPending && approveMutation.variables === sig.id;
@@ -783,6 +784,17 @@ function LeadDiscoveryPage() {
                   })}
                 </TableBody>
               </Table>
+            </div>
+          )}
+          {newSignals.length > 5 && (
+            <div className="mt-3">
+              <button
+                type="button"
+                onClick={() => setShowAllSignals((v) => !v)}
+                className="text-sm font-medium text-brand-blue hover:underline"
+              >
+                {showAllSignals ? "Hide signals" : `Show all signals (${newSignals.length})`}
+              </button>
             </div>
           )}
         </div>
@@ -999,10 +1011,11 @@ function LeadDiscoveryPage() {
             </div>
           );
 
+          const sectionTone = "bg-brand-turquoise/15 text-brand-turquoise border-brand-turquoise/30";
           const sections: Array<{ title: string; tone: string; items: LeadRow[] }> = [
-            { title: "Leads from ICP Filters", tone: "bg-brand-blue/10 text-brand-blue border-brand-blue/30", items: icpLeads },
-            { title: "Leads from Company Description", tone: "bg-brand-pink/10 text-brand-pink border-brand-pink/30", items: descLeads },
-            { title: "Leads from Signal Scan", tone: "bg-brand-turquoise/15 text-brand-turquoise border-brand-turquoise/30", items: signalLeads },
+            { title: "Leads from ICP Filters", tone: sectionTone, items: icpLeads },
+            { title: "Leads from Company Description", tone: sectionTone, items: descLeads },
+            { title: "Leads from Signal Scan", tone: sectionTone, items: signalLeads },
           ].filter((s) => s.items.length > 0);
 
           const bulkSetIds = (ids: string[], status: LeadStatus) => {
@@ -1028,22 +1041,28 @@ function LeadDiscoveryPage() {
                         </span>
                         <span className="text-xs text-muted-foreground">{s.items.length} {s.items.length === 1 ? "lead" : "leads"}</span>
                       </div>
-                      {sectionSelected.length > 0 && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-muted-foreground">{sectionSelected.length} selected</span>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
-                            onClick={() => bulkSetIds(sectionSelected, "Approved")}
-                          >
-                            Approve selected
-                          </Button>
-                          <Button size="sm" variant="outline" onClick={() => bulkSetIds(sectionSelected, "Skipped")}>
-                            Skip selected
-                          </Button>
-                        </div>
-                      )}
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">
+                          {sectionSelected.length > 0 ? `${sectionSelected.length} selected` : "Select rows to bulk action"}
+                        </span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
+                          disabled={sectionSelected.length === 0}
+                          onClick={() => bulkSetIds(sectionSelected, "Approved")}
+                        >
+                          Approve selected
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={sectionSelected.length === 0}
+                          onClick={() => bulkSetIds(sectionSelected, "Skipped")}
+                        >
+                          Skip selected
+                        </Button>
+                      </div>
                     </div>
                     {renderTable(s.items)}
                   </div>
