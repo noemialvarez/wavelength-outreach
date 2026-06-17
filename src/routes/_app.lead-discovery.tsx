@@ -468,6 +468,16 @@ function LeadDiscoveryPage() {
                 placeholder="e.g. Switzerland, DACH, Europe"
               />
             </div>
+            <div className="col-span-2">
+              <label className="mb-1 block text-xs font-medium">
+                Target job titles <span className="text-muted-foreground">(optional)</span>
+              </label>
+              <Input
+                value={descQuery.jobTitles}
+                onChange={(e) => setDescQuery((q) => ({ ...q, jobTitles: e.target.value }))}
+                placeholder="e.g. CEO, Head of Sales, VP Marketing"
+              />
+            </div>
             <div>
               <label className="mb-2 block text-xs font-medium">Audience</label>
               <RadioGroup
