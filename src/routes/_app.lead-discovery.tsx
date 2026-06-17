@@ -826,24 +826,6 @@ function LeadDiscoveryPage() {
           </div>
         </div>
 
-        {selected.size > 0 && (
-          <div className="mb-3 flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2">
-            <span className="text-sm">{selected.size} selected</span>
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
-                onClick={() => bulkSet("Approved")}
-              >
-                Approve selected
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => bulkSet("Skipped")}>
-                Skip selected
-              </Button>
-            </div>
-          </div>
-        )}
 
         {leadsLoading ? (
           <p className="py-8 text-center text-sm text-muted-foreground">Loading leads…</p>
