@@ -499,19 +499,82 @@ function LeadDiscoveryPage() {
           <div className="flex justify-end">
             <Button
               size="sm"
+              disabled={descSearchMutation.isPending}
               onClick={() => {
                 if (!descQuery.description.trim()) {
                   toast.error("Add a company description first");
                   return;
                 }
-                toast.success("Description-based search queued");
+                descSearchMutation.mutate();
               }}
             >
-              <Search className="mr-1.5 h-4 w-4" /> Find matching companies
+              {descSearchMutation.isPending ? (
+                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+              ) : (
+                <Search className="mr-1.5 h-4 w-4" />
+              )}
+              {descSearchMutation.isPending ? "Searching…" : "Find matching companies"}
             </Button>
           </div>
+
+          {descResults.length > 0 && (
+            <div className="space-y-3 pt-2">
+              <div className="text-xs font-medium text-muted-foreground">
+                {descResults.length} matching {descResults.length === 1 ? "company" : "companies"}
+              </div>
+              {descResults.map((m, i) => {
+                const key = m.id ?? `${m.company}-${i}`;
+                const why = m.whyMatches ?? m.why_it_matches;
+                const site = m.website ?? m.url;
+                const approved = approvedMatches.has(m.id ?? m.company);
+                return (
+                  <div key={key} className="rounded-md border bg-card p-4 space-y-2">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="font-bold">{m.company}</div>
+                        {site && (
+                          <a
+                            href={site.startsWith("http") ? site : `https://${site}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-sm text-brand-blue hover:underline"
+                          >
+                            {site}
+                          </a>
+                        )}
+                      </div>
+                      <Button
+                        size="sm"
+                        disabled={approved || approveMatchMutation.isPending}
+                        onClick={() => approveMatchMutation.mutate(m)}
+                        style={{ backgroundColor: "#E31B84", color: "white" }}
+                        className="hover:opacity-90"
+                      >
+                        {approved ? "Approved" : "Approve as lead"}
+                      </Button>
+                    </div>
+                    {(m.industry || m.geography) && (
+                      <div className="text-xs text-muted-foreground">
+                        {[m.industry, m.geography].filter(Boolean).join(" · ")}
+                      </div>
+                    )}
+                    {m.description && <p className="text-sm">{m.description}</p>}
+                    {why && (
+                      <div className="rounded-md bg-muted/60 p-3 text-sm">
+                        <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          Why it matches
+                        </div>
+                        {why}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </Card>
+
 
       {/* Option 3 — Sources */}
       <Card className="p-6">
