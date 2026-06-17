@@ -201,6 +201,49 @@ function LeadDiscoveryPage() {
     onError: () => toast.error("Scan failed — check backend connection"),
   });
 
+  const descSearchMutation = useMutation({
+    mutationFn: () =>
+      api
+        .post("/api/discovery/by-description", {
+          description: descQuery.description,
+          industry: descQuery.industry,
+          geography: descQuery.geography,
+          audience: descQuery.audience,
+          companySize: descQuery.size,
+        })
+        .then((r) => {
+          const d = r.data;
+          const list: DescriptionMatch[] = Array.isArray(d) ? d : (d?.data ?? d?.results ?? []);
+          return list;
+        }),
+    onSuccess: (data) => {
+      setDescResults(data);
+      setApprovedMatches(new Set());
+      if (!data.length) toast.info("No matching companies found");
+      else toast.success(`${data.length} matching companies found`);
+    },
+    onError: () => toast.error("Description search failed — check backend connection"),
+  });
+
+  const approveMatchMutation = useMutation({
+    mutationFn: (m: DescriptionMatch) =>
+      api.post("/api/leads", {
+        company: m.company,
+        signalSummary: m.whyMatches ?? m.why_it_matches ?? m.description ?? "Matched by company description",
+        signalType: "Other",
+        status: "Approved",
+        website: m.website ?? m.url,
+      }),
+    onSuccess: (_d, m) => {
+      const key = m.id ?? m.company;
+      setApprovedMatches((prev) => new Set(prev).add(key));
+      toast.success(`${m.company} added as lead`);
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+    },
+    onError: () => toast.error("Failed to add lead"),
+  });
+
+
   const filtered = useMemo(
     () =>
       leads.filter(
