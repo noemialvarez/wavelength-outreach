@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Plus, Play, Radar, Trash2, Search, Loader2, Zap, UserSearch, Mail, ArrowRight } from "lucide-react";
+import { Plus, Play, Radar, Trash2, Search, Loader2, Zap, UserSearch, Mail, ArrowRight, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -91,6 +91,7 @@ function LeadDiscoveryPage() {
   const [localEmails, setLocalEmails] = useState<Record<string, string>>({});
   const [showAllSources, setShowAllSources] = useState(false);
   const [showAllSignals, setShowAllSignals] = useState(false);
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
   const [descQuery, setDescQuery] = useState({
     description: "",
     industries: [] as string[],
@@ -335,6 +336,17 @@ function LeadDiscoveryPage() {
     toast.success(`${selected.size} lead${selected.size === 1 ? "" : "s"} ${status.toLowerCase()}`);
     setSelected(new Set());
   };
+
+  const toggleSection = (title: string) => {
+    setCollapsedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(title)) next.delete(title);
+      else next.add(title);
+      return next;
+    });
+  };
+
+  const expandAllSections = () => setCollapsedSections(new Set());
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 p-8">
@@ -889,7 +901,16 @@ function LeadDiscoveryPage() {
               {filtered.length} of {leads.length} leads
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
+            {collapsedSections.size > 0 && (
+              <button
+                type="button"
+                onClick={expandAllSections}
+                className="text-sm font-medium text-brand-blue hover:underline"
+              >
+                Show all
+              </button>
+            )}
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-40">
                 <SelectValue placeholder="Status" />
@@ -1121,6 +1142,7 @@ function LeadDiscoveryPage() {
                     return next;
                   });
                 };
+                const isCollapsed = collapsedSections.has(s.title);
                 return (
                   <div key={s.title} className="rounded-lg border bg-muted/10 p-4">
                     <div className="mb-3 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
@@ -1129,40 +1151,57 @@ function LeadDiscoveryPage() {
                           {s.title}
                         </span>
                         <span className="text-xs text-muted-foreground">{s.items.length} {s.items.length === 1 ? "lead" : "leads"}</span>
+                        <button
+                          type="button"
+                          onClick={() => toggleSection(s.title)}
+                          className="inline-flex items-center gap-0.5 text-xs font-medium text-brand-blue hover:underline"
+                        >
+                          {isCollapsed ? (
+                            <>
+                              <ChevronDown className="h-3 w-3" /> Show
+                            </>
+                          ) : (
+                            <>
+                              <ChevronUp className="h-3 w-3" /> Hide
+                            </>
+                          )}
+                        </button>
                       </div>
-                      <div className="flex flex-wrap items-center justify-end gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
-                          onClick={toggleAllSection}
-                        >
-                          {allSectionSelected ? "Clear all" : "Select all"}
-                        </Button>
-                        <span className="text-xs text-muted-foreground">
-                          {sectionSelected.length} selected
-                        </span>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
-                          disabled={sectionSelected.length === 0}
-                          onClick={() => bulkSetIds(sectionSelected, "Approved")}
-                        >
-                          Approve selected
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
-                          disabled={sectionSelected.length === 0}
-                          onClick={() => bulkSetIds(sectionSelected, "Skipped")}
-                        >
-                          Skip selected
-                        </Button>
-                      </div>
+                      {!isCollapsed && (
+                        <div className="flex flex-wrap items-center justify-end gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
+                            onClick={toggleAllSection}
+                          >
+                            {allSectionSelected ? "Clear all" : "Select all"}
+                          </Button>
+                          <span className="text-xs text-muted-foreground">
+                            {sectionSelected.length} selected
+                          </span>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
+                            disabled={sectionSelected.length === 0}
+                            onClick={() => bulkSetIds(sectionSelected, "Approved")}
+                          >
+                            Approve selected
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
+                            disabled={sectionSelected.length === 0}
+                            onClick={() => bulkSetIds(sectionSelected, "Skipped")}
+                          >
+                            Skip selected
+                          </Button>
+                        </div>
+                      )}
                     </div>
-                    {renderTable(s.items)}
+                    {!isCollapsed && renderTable(s.items)}
                   </div>
                 );
               })}
