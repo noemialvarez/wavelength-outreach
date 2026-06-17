@@ -93,6 +93,7 @@ function LeadDiscoveryPage() {
     description: "",
     industries: [] as string[],
     geography: "",
+    jobTitles: "",
     audience: "B2B" as "B2B" | "B2C",
     sizes: [] as string[],
   });
