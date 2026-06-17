@@ -692,104 +692,102 @@ function LeadDiscoveryPage() {
             {scanMutation.isPending ? "Scanning..." : "Run signal scan"}
           </Button>
         </div>
-      </Card>
 
-
-      {/* Signals */}
-      <Card className="p-6">
-        <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+        {/* Scan results inside Option 3 */}
+        <div className="mt-6 border-t pt-4">
+          <div className="mb-3 flex items-center gap-2">
             <Zap className="h-4 w-4 text-brand-turquoise" />
-            <h2 className="text-base font-semibold">Signals</h2>
+            <h3 className="text-sm font-semibold">Signal scan results</h3>
             {newSignals.length > 0 && (
               <span className="rounded-full bg-brand-turquoise/15 px-2 py-0.5 text-xs font-medium text-brand-turquoise">
                 {newSignals.length} new
               </span>
             )}
           </div>
-        </div>
 
-        {signalsLoading ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">Loading signals…</p>
-        ) : newSignals.length === 0 ? (
-          <EmptyState icon={Zap} message="No new signals. Run a scan to pull fresh results." />
-        ) : (
-          <div className="overflow-hidden rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Company</TableHead>
-                  <TableHead>Signal</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Source</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {newSignals.map((sig) => {
-                  const signalType = sig.raw_data?.signal_type;
-                  const signalDesc = sig.raw_data?.signal_description;
-                  const isApproving = approveMutation.isPending && approveMutation.variables === sig.id;
-                  const isDismissing = dismissMutation.isPending && dismissMutation.variables === sig.id;
-                  return (
-                    <TableRow key={sig.id}>
-                      <TableCell className="font-medium">{sig.company_name ?? "—"}</TableCell>
-                      <TableCell className="max-w-sm text-sm text-muted-foreground">
-                        {sig.signal_url ? (
-                          <a
-                            href={sig.signal_url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="hover:underline"
-                          >
-                            {signalDesc ?? sig.signal_url}
-                          </a>
-                        ) : (
-                          signalDesc ?? "—"
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {signalType && (
-                          <StatusBadge
-                            label={signalType}
-                            tone={signalTones[signalType] ?? "muted"}
-                          />
-                        )}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{sig.source}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {sig.created_at?.slice(0, 10)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1.5">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
-                            onClick={() => approveMutation.mutate(sig.id)}
-                            disabled={isApproving || isDismissing}
-                          >
-                            {isApproving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Approve"}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => dismissMutation.mutate(sig.id)}
-                            disabled={isApproving || isDismissing}
-                          >
-                            {isDismissing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Skip"}
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
-        )}
+          {signalsLoading ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">Loading signals…</p>
+          ) : newSignals.length === 0 ? (
+            <EmptyState icon={Zap} message="No new signals. Run a scan to pull fresh results." />
+          ) : (
+            <div className="overflow-hidden rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Company</TableHead>
+                    <TableHead>Signal</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Source</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {newSignals.map((sig) => {
+                    const signalType = sig.raw_data?.signal_type;
+                    const signalDesc = sig.raw_data?.signal_description;
+                    const isApproving = approveMutation.isPending && approveMutation.variables === sig.id;
+                    const isDismissing = dismissMutation.isPending && dismissMutation.variables === sig.id;
+                    return (
+                      <TableRow key={sig.id}>
+                        <TableCell className="font-medium">{sig.company_name ?? "—"}</TableCell>
+                        <TableCell className="max-w-sm text-sm text-muted-foreground">
+                          {sig.signal_url ? (
+                            <a
+                              href={sig.signal_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="hover:underline"
+                            >
+                              {signalDesc ?? sig.signal_url}
+                            </a>
+                          ) : (
+                            signalDesc ?? "—"
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {signalType && (
+                            <StatusBadge
+                              label={signalType}
+                              tone={signalTones[signalType] ?? "muted"}
+                            />
+                          )}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{sig.source}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {sig.created_at?.slice(0, 10)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1.5">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
+                              onClick={() => approveMutation.mutate(sig.id)}
+                              disabled={isApproving || isDismissing}
+                            >
+                              {isApproving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Approve"}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => dismissMutation.mutate(sig.id)}
+                              disabled={isApproving || isDismissing}
+                            >
+                              {isDismissing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Skip"}
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </div>
       </Card>
+
 
       {/* Leads table */}
       <Card className="p-6">
