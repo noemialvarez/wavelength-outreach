@@ -1,11 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Activity, Flag, RefreshCw } from "lucide-react";
-import { toast } from "sonner";
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Activity, RefreshCw } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -20,88 +17,80 @@ import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 
 export const Route = createFileRoute("/_app/sequence-monitor")({
-  head: () => ({ meta: [{ title: "Campaign Monitor — Wavelength" }] }),
+  head: () => ({ meta: [{ title: "Sequence Monitor — Wavelength" }] }),
   component: SequenceMonitorPage,
 });
 
-type SeqLead = {
+type LeadStatus = {
   id: string;
-  lemlist_lead_id?: string;
-  email?: string;
-  name?: string;
-  company?: string;
-  status?: string;
-  step?: string;
-  last_event_at?: string;
-  leads?: { name?: string; company?: string };
-  sequences?: { name?: string };
+  name: string;
+  company: string;
+  email: string;
+  status: "sent" | "opened" | "clicked" | "replied" | "bounced";
+  last_updated: string | null;
 };
 
-const STATUS_TONE: Record<string, "turquoise" | "pink" | "blue" | "muted"> = {
-  Active: "blue",
-  Opened: "pink",
-  Replied: "turquoise",
-  Bounced: "muted",
-  Unsubscribed: "muted",
+type Tone = "blue" | "amber" | "turquoise" | "purple" | "red" | "muted";
+
+const STATUS_TONE: Record<string, Tone> = {
+  sent: "blue",
+  opened: "amber",
+  clicked: "turquoise",
+  replied: "purple",
+  bounced: "red",
 };
 
-function fmt(dateStr?: string) {
+function fmt(dateStr?: string | null) {
   if (!dateStr) return "—";
-  return new Date(dateStr).toLocaleDateString("en-CH", { day: "numeric", month: "short" });
+  return new Date(dateStr).toLocaleDateString("en-CH", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 function SequenceMonitorPage() {
   const queryClient = useQueryClient();
-  const [flagged, setFlagged] = useState<Set<string>>(new Set());
-  const [notes, setNotes] = useState<Record<string, string>>({});
 
-  const { data: seqLeads = [], isLoading } = useQuery<SeqLead[]>({
-    queryKey: ["sequence-leads"],
-    queryFn: () => api.get("/api/sequences/leads").then((r) => r.data),
+  const { data: leads = [], isLoading, isFetching } = useQuery<LeadStatus[]>({
+    queryKey: ["sequence-status"],
+    queryFn: () => api.get("/api/sequences/status").then((r) => r.data),
   });
 
-  const syncMutation = useMutation({
-    mutationFn: () => api.post("/api/sequences/sync"),
-    onSuccess: (r) => {
-      toast.success(`Synced ${r.data.synced_leads} leads from Lemlist`);
-      queryClient.invalidateQueries({ queryKey: ["sequence-leads"] });
-    },
-    onError: (err: unknown) => {
-      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
-        ?? "Sync failed — check Lemlist API key and campaign ID in Settings";
-      toast.error(msg);
-    },
-  });
-
-  const main = seqLeads.filter((r) => !flagged.has(r.id));
-  const flaggedRows = seqLeads.filter((r) => flagged.has(r.id));
-
-  const active = seqLeads.filter((r) => r.status === "Active").length;
-  const openedNoReply = seqLeads.filter((r) => r.status === "Opened").length;
-  const replied = seqLeads.filter((r) => r.status === "Replied").length;
-  const bounced = seqLeads.filter((r) => r.status === "Bounced").length;
+  const counts = {
+    sent: leads.filter((l) => l.status === "sent").length,
+    opened: leads.filter((l) => l.status === "opened").length,
+    clicked: leads.filter((l) => l.status === "clicked").length,
+    replied: leads.filter((l) => l.status === "replied").length,
+    bounced: leads.filter((l) => l.status === "bounced").length,
+  };
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 p-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Campaign Monitor</h1>
+          <h1 className="text-2xl font-semibold">Sequence Monitor</h1>
           <p className="text-sm text-muted-foreground">
-            Track how your outreach is performing and rescue warm opens.
+            Live status of all leads pushed to Lemlist.
           </p>
         </div>
-        <Button variant="outline" onClick={() => syncMutation.mutate()} disabled={syncMutation.isPending}>
-          <RefreshCw className={cn("mr-1.5 h-4 w-4", syncMutation.isPending && "animate-spin")} />
-          {syncMutation.isPending ? "Syncing…" : "Sync from Lemlist"}
+        <Button
+          variant="outline"
+          onClick={() => queryClient.invalidateQueries({ queryKey: ["sequence-status"] })}
+          disabled={isFetching}
+        >
+          <RefreshCw className={cn("mr-1.5 h-4 w-4", isFetching && "animate-spin")} />
+          {isFetching ? "Refreshing…" : "Refresh"}
         </Button>
       </div>
 
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-5 gap-4">
         {[
-          { label: "Active in campaign", value: active, tone: "text-brand-blue" },
-          { label: "Opened, no reply", value: openedNoReply, tone: "text-primary" },
-          { label: "Replied", value: replied, tone: "text-brand-turquoise" },
-          { label: "Bounced", value: bounced, tone: "text-muted-foreground" },
+          { label: "Sent", value: counts.sent, tone: "text-brand-blue" },
+          { label: "Opened", value: counts.opened, tone: "text-amber-600" },
+          { label: "Clicked", value: counts.clicked, tone: "text-brand-turquoise" },
+          { label: "Replied", value: counts.replied, tone: "text-purple-600" },
+          { label: "Bounced", value: counts.bounced, tone: "text-destructive" },
         ].map((c) => (
           <Card key={c.label} className="p-5">
             <p className="text-xs uppercase tracking-wide text-muted-foreground">{c.label}</p>
@@ -111,108 +100,48 @@ function SequenceMonitorPage() {
       </div>
 
       <Card className="p-6">
-        <h2 className="mb-4 text-base font-semibold">Active campaigns</h2>
+        <h2 className="mb-4 text-base font-semibold">All leads</h2>
         {isLoading ? (
           <p className="py-8 text-center text-sm text-muted-foreground">Loading…</p>
-        ) : main.length === 0 ? (
+        ) : leads.length === 0 ? (
           <EmptyState
             icon={Activity}
-            message="No active campaigns. Push leads from Email Outreach or sync from Lemlist."
+            message="No leads found. Push leads from Email Outreach to get started."
           />
         ) : (
           <div className="overflow-hidden rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Lead</TableHead>
+                  <TableHead>Name</TableHead>
                   <TableHead>Company</TableHead>
-                  <TableHead>Campaign</TableHead>
-                  <TableHead>Step</TableHead>
-                  <TableHead>Last activity</TableHead>
+                  <TableHead>Email</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
+                  <TableHead>Last Updated</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {main.map((row) => {
-                  const opened = row.status === "Opened";
-                  return (
-                    <TableRow key={row.id} className={cn(opened && "bg-primary/5")}>
-                      <TableCell className="font-medium">{row.leads?.name ?? row.name ?? row.email ?? row.lemlist_lead_id ?? "—"}</TableCell>
-                      <TableCell>{row.leads?.company ?? row.company ?? "—"}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{row.sequences?.name}</TableCell>
-                      <TableCell>{row.step ? `Step ${row.step}` : "—"}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{fmt(row.last_event_at)}</TableCell>
-                      <TableCell>
-                        {row.status && (
-                          <StatusBadge
-                            label={row.status}
-                            tone={STATUS_TONE[row.status] ?? "muted"}
-                          />
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {opened && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setFlagged((prev) => new Set([...prev, row.id]));
-                              toast.success("Flagged for manual follow-up");
-                            }}
-                          >
-                            <Flag className="mr-1.5 h-3.5 w-3.5" /> Flag
-                          </Button>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-      </Card>
-
-      {flaggedRows.length > 0 && (
-        <Card className="p-6">
-          <h2 className="mb-4 text-base font-semibold">Flagged for follow-up</h2>
-          <div className="overflow-hidden rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Lead</TableHead>
-                  <TableHead>Company</TableHead>
-                  <TableHead>Campaign</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Notes</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {flaggedRows.map((row) => (
+                {leads.map((row) => (
                   <TableRow key={row.id}>
-                    <TableCell className="font-medium">{row.leads?.name ?? row.email}</TableCell>
-                    <TableCell>{row.leads?.company ?? "—"}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{row.sequences?.name}</TableCell>
+                    <TableCell className="font-medium">{row.name || "—"}</TableCell>
+                    <TableCell>{row.company || "—"}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{row.email}</TableCell>
                     <TableCell>
-                      {row.status && (
-                        <StatusBadge label={row.status} tone={STATUS_TONE[row.status] ?? "muted"} />
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        placeholder="Add note..."
-                        value={notes[row.id] ?? ""}
-                        onChange={(e) => setNotes((prev) => ({ ...prev, [row.id]: e.target.value }))}
+                      <StatusBadge
+                        label={row.status.charAt(0).toUpperCase() + row.status.slice(1)}
+                        tone={STATUS_TONE[row.status] ?? "muted"}
                       />
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {fmt(row.last_updated)}
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           </div>
-        </Card>
-      )}
+        )}
+      </Card>
     </div>
   );
 }

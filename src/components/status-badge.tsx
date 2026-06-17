@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-type Tone = "turquoise" | "pink" | "blue" | "muted" | "amber";
+type Tone = "turquoise" | "pink" | "blue" | "muted" | "amber" | "purple" | "red";
 
 const toneClass: Record<Tone, string> = {
   turquoise: "bg-brand-turquoise/15 text-brand-turquoise border-brand-turquoise/30",
@@ -9,6 +9,8 @@ const toneClass: Record<Tone, string> = {
   blue: "bg-brand-blue/15 text-brand-blue border-brand-blue/30",
   muted: "bg-muted text-muted-foreground border-border",
   amber: "bg-amber-100 text-amber-800 border-amber-200",
+  purple: "bg-purple-100 text-purple-700 border-purple-200",
+  red: "bg-destructive/10 text-destructive border-destructive/30",
 };
 
 export function StatusBadge({
