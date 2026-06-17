@@ -207,10 +207,10 @@ function LeadDiscoveryPage() {
       api
         .post("/api/discovery/by-description", {
           description: descQuery.description,
-          industry: descQuery.industry,
+          industries: descQuery.industries,
           geography: descQuery.geography,
           audience: descQuery.audience,
-          companySize: descQuery.size,
+          companySizes: descQuery.sizes,
         })
         .then((r) => {
           const d = r.data;
