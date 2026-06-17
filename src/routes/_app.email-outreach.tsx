@@ -426,6 +426,16 @@ function EmailOutreachPage() {
           })}
         </div>
       )}
+
+      <div className="flex justify-end pt-2">
+        <Link
+          to="/sequence-monitor"
+          className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-pink hover:underline"
+        >
+          Next step <ArrowRight className="h-4 w-4" />
+        </Link>
+      </div>
     </div>
   );
 }
+
