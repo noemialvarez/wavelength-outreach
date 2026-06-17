@@ -222,6 +222,7 @@ function LeadDiscoveryPage() {
           description: descQuery.description,
           industries: descQuery.industries,
           geography: descQuery.geography,
+          jobTitles: descQuery.jobTitles.split(",").map((t) => t.trim()).filter(Boolean),
           audience: descQuery.audience,
           companySizes: descQuery.sizes,
         })
