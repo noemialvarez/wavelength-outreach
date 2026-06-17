@@ -999,10 +999,11 @@ function LeadDiscoveryPage() {
             </div>
           );
 
+          const sectionTone = "bg-brand-turquoise/15 text-brand-turquoise border-brand-turquoise/30";
           const sections: Array<{ title: string; tone: string; items: LeadRow[] }> = [
-            { title: "Leads from ICP Filters", tone: "bg-brand-blue/10 text-brand-blue border-brand-blue/30", items: icpLeads },
-            { title: "Leads from Company Description", tone: "bg-brand-pink/10 text-brand-pink border-brand-pink/30", items: descLeads },
-            { title: "Leads from Signal Scan", tone: "bg-brand-turquoise/15 text-brand-turquoise border-brand-turquoise/30", items: signalLeads },
+            { title: "Leads from ICP Filters", tone: sectionTone, items: icpLeads },
+            { title: "Leads from Company Description", tone: sectionTone, items: descLeads },
+            { title: "Leads from Signal Scan", tone: sectionTone, items: signalLeads },
           ].filter((s) => s.items.length > 0);
 
           const bulkSetIds = (ids: string[], status: LeadStatus) => {
