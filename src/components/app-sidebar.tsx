@@ -15,8 +15,11 @@ import {
 const items = [
   { title: "Lead Discovery", url: "/lead-discovery", icon: Radar },
   { title: "Email Outreach", url: "/email-outreach", icon: Mail },
-  { title: "Prospect Engagement", url: "/prospect-engagement", icon: MessageCircle },
   { title: "Campaign Monitor", url: "/sequence-monitor", icon: Activity },
+];
+
+const secondaryItems = [
+  { title: "Prospect Engagement", url: "/prospect-engagement", icon: MessageCircle },
 ];
 
 export function AppSidebar() {
