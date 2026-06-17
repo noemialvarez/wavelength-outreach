@@ -356,26 +356,20 @@ function LeadDiscoveryPage() {
             <label className="mb-1 block text-xs font-medium">
               Company size <span className="text-muted-foreground">(optional)</span>
             </label>
-            <Select
-              value={icp.companySize || "any"}
-              onValueChange={(v) =>
-                store.set((s) => ({ ...s, icp: { ...s.icp, companySize: v === "any" ? "" : v } }))
-              }
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="any">Any size</SelectItem>
-                <SelectItem value="1-10">1-10</SelectItem>
-                <SelectItem value="11-50">11-50</SelectItem>
-                <SelectItem value="51-200">51-200</SelectItem>
-                <SelectItem value="201-500">201-500</SelectItem>
-                <SelectItem value="501-1000">501-1000</SelectItem>
-                <SelectItem value="1001-5000">1001-5000</SelectItem>
-                <SelectItem value=">5000">&gt;5000</SelectItem>
-              </SelectContent>
-            </Select>
+            <MultiSelect
+              options={[
+                { value: "1-10", label: "1-10" },
+                { value: "11-50", label: "11-50" },
+                { value: "51-200", label: "51-200" },
+                { value: "201-500", label: "201-500" },
+                { value: "501-1000", label: "501-1000" },
+                { value: "1001-5000", label: "1001-5000" },
+                { value: ">5000", label: ">5000" },
+              ]}
+              value={icp.companySizes}
+              onChange={(v) => store.set((s) => ({ ...s, icp: { ...s.icp, companySizes: v } }))}
+              placeholder="Select sizes"
+            />
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium">
