@@ -139,6 +139,15 @@ function LeadDiscoveryPage() {
     onError: () => toast.error("Failed to update lead status"),
   });
 
+  const deleteLeadMutation = useMutation({
+    mutationFn: (id: string) => api.delete(`/api/leads/${id}`),
+    onSuccess: () => {
+      toast.success("Lead deleted");
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+    },
+    onError: () => toast.error("Failed to delete lead"),
+  });
+
   const updateEmailMutation = useMutation({
     mutationFn: ({ id, email }: { id: string; email: string }) =>
       api.patch(`/api/leads/${id}`, { email }),
@@ -286,7 +295,7 @@ function LeadDiscoveryPage() {
       {/* Option 1 — ICP filters */}
       <Card className="p-6">
         <div className="mb-4">
-          <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-brand-pink">
+          <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-brand-blue">
             Option 1
           </div>
           <h2 className="text-base font-semibold">By ICP filters</h2>
@@ -566,30 +575,24 @@ function LeadDiscoveryPage() {
       <Card className="p-6">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-brand-turquoise">
+            <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-brand-blue">
               Option 3
             </div>
             <h2 className="text-base font-semibold">By sources</h2>
             <p className="text-xs text-muted-foreground">Toggle which feeds power your scan.</p>
           </div>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                store.set((s) => ({
-                  ...s,
-                  sources: [...s.sources, { id: uid(), name: "", url: "", enabled: true }],
-                }))
-              }
-            >
-              <Plus className="mr-1.5 h-4 w-4" /> Add source
-            </Button>
-            <Button size="sm" onClick={() => scanMutation.mutate()} disabled={scanMutation.isPending}>
-              <Play className="mr-1.5 h-4 w-4" />
-              {scanMutation.isPending ? "Scanning..." : "Run signal scan"}
-            </Button>
-          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              store.set((s) => ({
+                ...s,
+                sources: [...s.sources, { id: uid(), name: "", url: "", enabled: true }],
+              }))
+            }
+          >
+            <Plus className="mr-1.5 h-4 w-4" /> Add source
+          </Button>
         </div>
         <div className="space-y-2">
           {(showAllSources ? sources : sources.slice(0, 3)).map((src) => (
@@ -641,17 +644,23 @@ function LeadDiscoveryPage() {
             </div>
           ))}
         </div>
-        {sources.length > 3 && (
-          <button
-            type="button"
-            onClick={() => setShowAllSources((v) => !v)}
-            className="mt-3 text-sm font-medium text-brand-blue hover:underline"
-          >
-            {showAllSources
-              ? "Show fewer sources"
-              : `Show all sources (${sources.length})`}
-          </button>
-        )}
+        <div className="mt-3 flex items-center justify-between">
+          {sources.length > 3 ? (
+            <button
+              type="button"
+              onClick={() => setShowAllSources((v) => !v)}
+              className="text-sm font-medium text-brand-blue hover:underline"
+            >
+              {showAllSources
+                ? "Show fewer sources"
+                : `Show all sources (${sources.length})`}
+            </button>
+          ) : <span />}
+          <Button size="sm" onClick={() => scanMutation.mutate()} disabled={scanMutation.isPending}>
+            <Play className="mr-1.5 h-4 w-4" />
+            {scanMutation.isPending ? "Scanning..." : "Run signal scan"}
+          </Button>
+        </div>
       </Card>
 
 
@@ -942,6 +951,24 @@ function LeadDiscoveryPage() {
                           onClick={() => setLeadStatus(l.id, "Skipped")}
                         >
                           Skip
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="text-muted-foreground hover:text-destructive"
+                          title="Delete lead"
+                          onClick={() => {
+                            if (confirm(`Delete lead "${l.company}"?`)) {
+                              deleteLeadMutation.mutate(l.id);
+                            }
+                          }}
+                          disabled={deleteLeadMutation.isPending && deleteLeadMutation.variables === l.id}
+                        >
+                          {deleteLeadMutation.isPending && deleteLeadMutation.variables === l.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-3.5 w-3.5" />
+                          )}
                         </Button>
                       </div>
                     </TableCell>

@@ -15,8 +15,11 @@ import {
 const items = [
   { title: "Lead Discovery", url: "/lead-discovery", icon: Radar },
   { title: "Email Outreach", url: "/email-outreach", icon: Mail },
-  { title: "Prospect Engagement", url: "/prospect-engagement", icon: MessageCircle },
   { title: "Campaign Monitor", url: "/sequence-monitor", icon: Activity },
+];
+
+const secondaryItems = [
+  { title: "Prospect Engagement", url: "/prospect-engagement", icon: MessageCircle },
 ];
 
 export function AppSidebar() {
@@ -37,6 +40,26 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {items.map((item) => {
+                const active = pathname.startsWith(item.url);
+                return (
+                  <SidebarMenuItem key={item.url}>
+                    <SidebarMenuButton asChild isActive={active} className="h-10">
+                      <Link to={item.url} className="flex items-center gap-3">
+                        <item.icon className="h-4 w-4" />
+                        <span className="text-sm">{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup className="mt-8 border-t border-sidebar-border pt-4">
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {secondaryItems.map((item) => {
                 const active = pathname.startsWith(item.url);
                 return (
                   <SidebarMenuItem key={item.url}>
