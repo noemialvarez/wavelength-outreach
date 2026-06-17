@@ -114,10 +114,9 @@ function LeadDiscoveryPage() {
   });
   const newSignals = signalsData ?? [];
   const visibleSignals = showAllSignals ? newSignals : newSignals.slice(0, 5);
-  const visibleSignalIds = visibleSignals.map((sig) => sig.id);
-  const selectedVisibleSignalIds = visibleSignalIds.filter((id) => selectedSignals.has(id));
-  const allVisibleSignalsSelected =
-    visibleSignalIds.length > 0 && selectedVisibleSignalIds.length === visibleSignalIds.length;
+  const signalIds = newSignals.map((sig) => sig.id);
+  const selectedSignalIds = signalIds.filter((id) => selectedSignals.has(id));
+  const allSignalsSelected = signalIds.length > 0 && selectedSignalIds.length === signalIds.length;
 
   const { data: leadsData, isLoading: leadsLoading } = useQuery({
     queryKey: ["leads"],
@@ -304,11 +303,11 @@ function LeadDiscoveryPage() {
     });
   };
 
-  const toggleAllVisibleSignals = () => {
+  const toggleAllSignals = () => {
     setSelectedSignals((prev) => {
       const next = new Set(prev);
-      if (allVisibleSignalsSelected) visibleSignalIds.forEach((id) => next.delete(id));
-      else visibleSignalIds.forEach((id) => next.add(id));
+      if (allSignalsSelected) signalIds.forEach((id) => next.delete(id));
+      else signalIds.forEach((id) => next.add(id));
       return next;
     });
   };
@@ -768,19 +767,19 @@ function LeadDiscoveryPage() {
                   size="sm"
                   variant="outline"
                   className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
-                  onClick={toggleAllVisibleSignals}
+                  onClick={toggleAllSignals}
                 >
-                  {allVisibleSignalsSelected ? "Clear visible" : "Select all visible"}
+                  {allSignalsSelected ? "Clear all" : "Select all"}
                 </Button>
                 <span className="text-xs text-muted-foreground">
-                  {selectedVisibleSignalIds.length} selected
+                  {selectedSignalIds.length} selected
                 </span>
                 <Button
                   size="sm"
                   variant="outline"
                   className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
-                  disabled={selectedVisibleSignalIds.length === 0}
-                  onClick={() => bulkSetSignals(selectedVisibleSignalIds, "approve")}
+                  disabled={selectedSignalIds.length === 0}
+                  onClick={() => bulkSetSignals(selectedSignalIds, "approve")}
                 >
                   Approve selected
                 </Button>
@@ -788,8 +787,8 @@ function LeadDiscoveryPage() {
                   size="sm"
                   variant="outline"
                   className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
-                  disabled={selectedVisibleSignalIds.length === 0}
-                  onClick={() => bulkSetSignals(selectedVisibleSignalIds, "skip")}
+                  disabled={selectedSignalIds.length === 0}
+                  onClick={() => bulkSetSignals(selectedSignalIds, "skip")}
                 >
                   Skip selected
                 </Button>
