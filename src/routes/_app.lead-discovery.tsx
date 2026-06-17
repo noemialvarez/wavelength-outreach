@@ -952,6 +952,24 @@ function LeadDiscoveryPage() {
                         >
                           Skip
                         </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="text-muted-foreground hover:text-destructive"
+                          title="Delete lead"
+                          onClick={() => {
+                            if (confirm(`Delete lead "${l.company}"?`)) {
+                              deleteLeadMutation.mutate(l.id);
+                            }
+                          }}
+                          disabled={deleteLeadMutation.isPending && deleteLeadMutation.variables === l.id}
+                        >
+                          {deleteLeadMutation.isPending && deleteLeadMutation.variables === l.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-3.5 w-3.5" />
+                          )}
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
