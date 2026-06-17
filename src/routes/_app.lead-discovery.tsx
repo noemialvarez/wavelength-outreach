@@ -91,6 +91,7 @@ function LeadDiscoveryPage() {
   const [localEmails, setLocalEmails] = useState<Record<string, string>>({});
   const [showAllSources, setShowAllSources] = useState(false);
   const [showAllSignals, setShowAllSignals] = useState(false);
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
   const [descQuery, setDescQuery] = useState({
     description: "",
     industries: [] as string[],
