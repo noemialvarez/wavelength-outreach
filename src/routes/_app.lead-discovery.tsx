@@ -239,19 +239,23 @@ function LeadDiscoveryPage() {
   });
 
   const approveMatchMutation = useMutation({
-    mutationFn: (m: DescriptionMatch) =>
-      api.post("/api/leads", {
-        name: m.company_name ?? m.company ?? "",
-        company: m.company_name ?? m.company ?? "",
-        website: m.website ?? m.url ?? "",
-        notes: m.description ?? "",
+    mutationFn: (m: DescriptionMatch) => {
+      console.log("[approveMatch] match object:", m);
+      const payload = {
+        name: m.company_name || m.company || m.name || "",
+        company: m.company_name || m.company || m.name || "",
+        website: m.website || m.url || "",
+        notes: m.description || m.why_match || m.whyMatches || m.why_it_matches || "",
         source: "company_description",
         status: "Approved",
-      }),
+      };
+      console.log("[approveMatch] payload:", payload);
+      return api.post("/api/leads", payload);
+    },
     onSuccess: (_d, m) => {
-      const key = m.id ?? m.company_name ?? m.company ?? "";
+      const key = m.id ?? m.company_name ?? m.company ?? m.name ?? "";
       setApprovedMatches((prev) => new Set(prev).add(key));
-      toast.success(`${m.company_name ?? m.company} added as lead`);
+      toast.success(`${m.company_name ?? m.company ?? m.name} added as lead`);
       queryClient.invalidateQueries({ queryKey: ["leads"] });
     },
     onError: () => toast.error("Failed to add lead"),
