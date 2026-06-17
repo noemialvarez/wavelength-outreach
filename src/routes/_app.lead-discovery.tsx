@@ -353,7 +353,7 @@ function LeadDiscoveryPage() {
       <div>
         <h1 className="text-2xl font-semibold">Lead Discovery</h1>
         <p className="text-sm text-muted-foreground">
-          Pull warm signals from your configured sources and shortlist the right founders.
+          Discover potential leads based on 3 options: (1) ICP filters, (2) company description and (3) by news sources
         </p>
       </div>
 
@@ -659,7 +659,7 @@ function LeadDiscoveryPage() {
             <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-brand-turquoise">
               Option 3
             </div>
-            <h2 className="text-base font-semibold">By sources</h2>
+            <h2 className="text-base font-semibold">By news sources</h2>
             <p className="text-xs text-muted-foreground">Toggle which feeds power your scan.</p>
           </div>
           <Button
