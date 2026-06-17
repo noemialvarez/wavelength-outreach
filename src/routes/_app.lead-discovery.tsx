@@ -337,6 +337,17 @@ function LeadDiscoveryPage() {
     setSelected(new Set());
   };
 
+  const toggleSection = (title: string) => {
+    setCollapsedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(title)) next.delete(title);
+      else next.add(title);
+      return next;
+    });
+  };
+
+  const expandAllSections = () => setCollapsedSections(new Set());
+
   return (
     <div className="mx-auto max-w-7xl space-y-6 p-8">
       <div>
