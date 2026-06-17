@@ -635,17 +635,23 @@ function LeadDiscoveryPage() {
             </div>
           ))}
         </div>
-        {sources.length > 3 && (
-          <button
-            type="button"
-            onClick={() => setShowAllSources((v) => !v)}
-            className="mt-3 text-sm font-medium text-brand-blue hover:underline"
-          >
-            {showAllSources
-              ? "Show fewer sources"
-              : `Show all sources (${sources.length})`}
-          </button>
-        )}
+        <div className="mt-3 flex items-center justify-between">
+          {sources.length > 3 ? (
+            <button
+              type="button"
+              onClick={() => setShowAllSources((v) => !v)}
+              className="text-sm font-medium text-brand-blue hover:underline"
+            >
+              {showAllSources
+                ? "Show fewer sources"
+                : `Show all sources (${sources.length})`}
+            </button>
+          ) : <span />}
+          <Button size="sm" onClick={() => scanMutation.mutate()} disabled={scanMutation.isPending}>
+            <Play className="mr-1.5 h-4 w-4" />
+            {scanMutation.isPending ? "Scanning..." : "Run signal scan"}
+          </Button>
+        </div>
       </Card>
 
 
