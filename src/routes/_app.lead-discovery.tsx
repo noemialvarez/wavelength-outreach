@@ -239,16 +239,17 @@ function LeadDiscoveryPage() {
   const approveMatchMutation = useMutation({
     mutationFn: (m: DescriptionMatch) =>
       api.post("/api/leads", {
-        name: m.company,
-        company: m.company,
-        notes: m.whyMatches ?? m.why_it_matches ?? m.description ?? "Matched by company description",
+        name: m.company_name ?? m.company ?? "",
+        company: m.company_name ?? m.company ?? "",
+        website: m.website ?? m.url ?? "",
+        notes: m.description ?? "",
         source: "company_description",
         status: "Approved",
       }),
     onSuccess: (_d, m) => {
-      const key = m.id ?? m.company;
+      const key = m.id ?? m.company_name ?? m.company ?? "";
       setApprovedMatches((prev) => new Set(prev).add(key));
-      toast.success(`${m.company} added as lead`);
+      toast.success(`${m.company_name ?? m.company} added as lead`);
       queryClient.invalidateQueries({ queryKey: ["leads"] });
     },
     onError: () => toast.error("Failed to add lead"),
