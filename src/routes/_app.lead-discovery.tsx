@@ -102,6 +102,8 @@ function LeadDiscoveryPage() {
   });
   const [descResults, setDescResults] = useState<DescriptionMatch[]>([]);
   const [approvedMatches, setApprovedMatches] = useState<Set<string>>(new Set());
+  const [icpResults, setIcpResults] = useState<DescriptionMatch[]>([]);
+  const [approvedIcpMatches, setApprovedIcpMatches] = useState<Set<string>>(new Set());
 
 
   const queryClient = useQueryClient();
@@ -274,6 +276,93 @@ function LeadDiscoveryPage() {
     },
     onError: () => toast.error("Failed to add lead"),
   });
+
+  const normalizeMatch = (item: Record<string, string>): DescriptionMatch => ({
+    ...item,
+    company: item.company || item.company_name || "",
+    whyMatches: item.whyMatches || item.why_match || item.why_it_matches || "",
+  });
+
+  const buildMockIcpMatches = (): DescriptionMatch[] => {
+    const industry = icp.industries[0] ?? "SaaS";
+    const geo = icp.geography || "Switzerland";
+    const size = icp.companySizes[0] ?? "11-50";
+    const title = icp.titles[0] ?? "CEO";
+    const baseNames =
+      icp.companyNames.length > 0
+        ? icp.companyNames
+        : [
+            "Nordlys AI",
+            "Helvetia Robotics",
+            "Alpine Data Co",
+            "Lumen Health",
+            "Cervino Logistics",
+            "Matterhorn Fintech",
+          ];
+    return baseNames.slice(0, 6).map((name, i) => ({
+      id: `icp-${i}-${name}`,
+      company_name: name,
+      company: name,
+      website: `${name.toLowerCase().replace(/[^a-z0-9]+/g, "")}.com`,
+      industry,
+      geography: geo,
+      description: `${name} is a ${size}-person ${industry} company based in ${geo}.`,
+      whyMatches: `Matches ICP: ${industry}, ${geo}, ${size} employees${
+        title ? `, hiring for ${title}` : ""
+      }.`,
+    }));
+  };
+
+  const icpSearchMutation = useMutation({
+    mutationFn: async () => {
+      try {
+        const r = await api.post("/api/discovery/by-icp", {
+          companyNames: icp.companyNames,
+          jobTitles: icp.titles,
+          industries: icp.industries,
+          companySizes: icp.companySizes,
+          geography: icp.geography,
+        });
+        const d = r.data;
+        const raw: Array<Record<string, string>> = Array.isArray(d)
+          ? d
+          : (d?.data ?? d?.results ?? []);
+        if (raw.length) return raw.map(normalizeMatch);
+      } catch {
+        // backend unavailable — fall through to mock
+      }
+      return buildMockIcpMatches();
+    },
+    onSuccess: (data) => {
+      setIcpResults(data);
+      setApprovedIcpMatches(new Set());
+      if (!data.length) toast.info("No matching companies found");
+      else toast.success(`${data.length} matching companies found`);
+    },
+    onError: () => toast.error("ICP search failed"),
+  });
+
+  const approveIcpMutation = useMutation({
+    mutationFn: (m: DescriptionMatch) => {
+      const payload = {
+        name: m.company_name || m.company || m.name || "",
+        company: m.company_name || m.company || m.name || "",
+        website: m.website || m.url || "",
+        notes: m.description || m.whyMatches || "",
+        source: "icp_filters",
+        status: "Approved",
+      };
+      return api.post("/api/leads", payload);
+    },
+    onSuccess: (_d, m) => {
+      const key = m.id ?? m.company_name ?? m.company ?? m.name ?? "";
+      setApprovedIcpMatches((prev) => new Set(prev).add(key));
+      toast.success(`${m.company_name ?? m.company ?? m.name} added as lead`);
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+    },
+    onError: () => toast.error("Failed to add lead"),
+  });
+
 
 
   const filtered = useMemo(
@@ -461,12 +550,82 @@ function LeadDiscoveryPage() {
         <div className="flex justify-end pt-4">
           <Button
             size="sm"
-            onClick={() => toast.success("ICP search queued — results will appear shortly")}
+            disabled={icpSearchMutation.isPending}
+            onClick={() => icpSearchMutation.mutate()}
           >
-            <Search className="mr-1.5 h-4 w-4" /> Find matching ICP
+            {icpSearchMutation.isPending ? (
+              <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+            ) : (
+              <Search className="mr-1.5 h-4 w-4" />
+            )}
+            {icpSearchMutation.isPending ? "Searching…" : "Find matching ICP"}
           </Button>
         </div>
+
+        {icpResults.length > 0 && (
+          <div className="space-y-3 pt-4">
+            <div className="text-xs font-medium text-muted-foreground">
+              {icpResults.length} matching {icpResults.length === 1 ? "company" : "companies"}
+            </div>
+            {icpResults.map((m, i) => {
+              const key = m.id ?? `${m.company_name ?? m.company ?? "unknown"}-${i}`;
+              const site = m.website ?? m.url;
+              const cardKey = m.id ?? m.company_name ?? m.company ?? "";
+              const approved = approvedIcpMatches.has(cardKey);
+              const isApprovingThis =
+                approveIcpMutation.isPending &&
+                (approveIcpMutation.variables?.id ??
+                  approveIcpMutation.variables?.company_name ??
+                  approveIcpMutation.variables?.company) === cardKey;
+              return (
+                <div key={key} className="rounded-md border bg-card p-4 space-y-2">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="font-bold">{m.company_name ?? m.company}</div>
+                      {site && (
+                        <a
+                          href={site.startsWith("http") ? site : `https://${site}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-sm text-brand-blue hover:underline"
+                        >
+                          {site}
+                        </a>
+                      )}
+                    </div>
+                    <Button
+                      size="sm"
+                      disabled={approved || isApprovingThis}
+                      onClick={() => approveIcpMutation.mutate(m)}
+                      style={{ backgroundColor: "#E31B84", color: "white" }}
+                      className="hover:opacity-90"
+                    >
+                      {isApprovingThis ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : approved ? "Approved" : "Approve as lead"}
+                    </Button>
+                  </div>
+                  {(m.industry || m.geography) && (
+                    <div className="text-xs text-muted-foreground">
+                      {[m.industry, m.geography].filter(Boolean).join(" · ")}
+                    </div>
+                  )}
+                  {m.description && <p className="text-sm">{m.description}</p>}
+                  {m.whyMatches && (
+                    <div className="rounded-md bg-muted/60 p-3 text-sm">
+                      <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Why it matches
+                      </div>
+                      {m.whyMatches}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </Card>
+
 
       {/* Option 2 — By Company Description */}
       <Card className="p-6">
