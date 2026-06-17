@@ -683,7 +683,7 @@ function LeadDiscoveryPage() {
               className="text-sm font-medium text-brand-blue hover:underline"
             >
               {showAllSources
-                ? "Show fewer sources"
+                ? "Hide sources"
                 : `Show all sources (${sources.length})`}
             </button>
           ) : <span />}
