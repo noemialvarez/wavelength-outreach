@@ -107,7 +107,7 @@ const seed = (): State => ({
     companyNames: [],
     titles: ["CEO", "Head of Sales", "VP Marketing"],
     industries: ["SaaS", "Fintech"],
-    companySize: "11-50",
+    companySizes: ["11-50"],
     geography: "Switzerland",
   },
   leads: [
