@@ -550,12 +550,82 @@ function LeadDiscoveryPage() {
         <div className="flex justify-end pt-4">
           <Button
             size="sm"
-            onClick={() => toast.success("ICP search queued — results will appear shortly")}
+            disabled={icpSearchMutation.isPending}
+            onClick={() => icpSearchMutation.mutate()}
           >
-            <Search className="mr-1.5 h-4 w-4" /> Find matching ICP
+            {icpSearchMutation.isPending ? (
+              <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+            ) : (
+              <Search className="mr-1.5 h-4 w-4" />
+            )}
+            {icpSearchMutation.isPending ? "Searching…" : "Find matching ICP"}
           </Button>
         </div>
+
+        {icpResults.length > 0 && (
+          <div className="space-y-3 pt-4">
+            <div className="text-xs font-medium text-muted-foreground">
+              {icpResults.length} matching {icpResults.length === 1 ? "company" : "companies"}
+            </div>
+            {icpResults.map((m, i) => {
+              const key = m.id ?? `${m.company_name ?? m.company ?? "unknown"}-${i}`;
+              const site = m.website ?? m.url;
+              const cardKey = m.id ?? m.company_name ?? m.company ?? "";
+              const approved = approvedIcpMatches.has(cardKey);
+              const isApprovingThis =
+                approveIcpMutation.isPending &&
+                (approveIcpMutation.variables?.id ??
+                  approveIcpMutation.variables?.company_name ??
+                  approveIcpMutation.variables?.company) === cardKey;
+              return (
+                <div key={key} className="rounded-md border bg-card p-4 space-y-2">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="font-bold">{m.company_name ?? m.company}</div>
+                      {site && (
+                        <a
+                          href={site.startsWith("http") ? site : `https://${site}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-sm text-brand-blue hover:underline"
+                        >
+                          {site}
+                        </a>
+                      )}
+                    </div>
+                    <Button
+                      size="sm"
+                      disabled={approved || isApprovingThis}
+                      onClick={() => approveIcpMutation.mutate(m)}
+                      style={{ backgroundColor: "#E31B84", color: "white" }}
+                      className="hover:opacity-90"
+                    >
+                      {isApprovingThis ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : approved ? "Approved" : "Approve as lead"}
+                    </Button>
+                  </div>
+                  {(m.industry || m.geography) && (
+                    <div className="text-xs text-muted-foreground">
+                      {[m.industry, m.geography].filter(Boolean).join(" · ")}
+                    </div>
+                  )}
+                  {m.description && <p className="text-sm">{m.description}</p>}
+                  {m.whyMatches && (
+                    <div className="rounded-md bg-muted/60 p-3 text-sm">
+                      <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Why it matches
+                      </div>
+                      {m.whyMatches}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </Card>
+
 
       {/* Option 2 — By Company Description */}
       <Card className="p-6">
