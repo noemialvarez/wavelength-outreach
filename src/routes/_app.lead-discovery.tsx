@@ -238,11 +238,11 @@ function LeadDiscoveryPage() {
   const approveMatchMutation = useMutation({
     mutationFn: (m: DescriptionMatch) =>
       api.post("/api/leads", {
+        name: m.company,
         company: m.company,
-        signalSummary: m.whyMatches ?? m.why_it_matches ?? m.description ?? "Matched by company description",
-        signalType: "Other",
+        notes: m.whyMatches ?? m.why_it_matches ?? m.description ?? "Matched by company description",
+        source: "company_description",
         status: "Approved",
-        website: m.website ?? m.url,
       }),
     onSuccess: (_d, m) => {
       const key = m.id ?? m.company;
