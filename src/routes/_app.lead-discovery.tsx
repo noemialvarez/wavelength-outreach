@@ -68,6 +68,15 @@ function LeadDiscoveryPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [localEmails, setLocalEmails] = useState<Record<string, string>>({});
+  const [showAllSources, setShowAllSources] = useState(false);
+  const [descQuery, setDescQuery] = useState({
+    description: "",
+    industry: "",
+    geography: "",
+    audience: "B2B" as "B2B" | "B2C",
+    size: "",
+  });
+
 
   const queryClient = useQueryClient();
 
