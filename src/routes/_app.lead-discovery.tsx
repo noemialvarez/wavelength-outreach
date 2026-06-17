@@ -85,6 +85,7 @@ function LeadDiscoveryPage() {
   const icp = useStore((s) => s.icp);
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [selectedSignals, setSelectedSignals] = useState<Set<string>>(new Set());
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [localEmails, setLocalEmails] = useState<Record<string, string>>({});
@@ -112,6 +113,10 @@ function LeadDiscoveryPage() {
         .then((r) => (r.data.data ?? []) as DiscoverySignal[]),
   });
   const newSignals = signalsData ?? [];
+  const visibleSignals = showAllSignals ? newSignals : newSignals.slice(0, 5);
+  const signalIds = newSignals.map((sig) => sig.id);
+  const selectedSignalIds = signalIds.filter((id) => selectedSignals.has(id));
+  const allSignalsSelected = signalIds.length > 0 && selectedSignalIds.length === signalIds.length;
 
   const { data: leadsData, isLoading: leadsLoading } = useQuery({
     queryKey: ["leads"],
@@ -285,6 +290,38 @@ function LeadDiscoveryPage() {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSignalSelect = (id: string) => {
+    setSelectedSignals((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAllSignals = () => {
+    setSelectedSignals((prev) => {
+      const next = new Set(prev);
+      if (allSignalsSelected) signalIds.forEach((id) => next.delete(id));
+      else signalIds.forEach((id) => next.add(id));
+      return next;
+    });
+  };
+
+  const bulkSetSignals = (ids: string[], action: "approve" | "skip") => {
+    if (ids.length === 0) return;
+    ids.forEach((id) => {
+      if (action === "approve") approveMutation.mutate(id);
+      else dismissMutation.mutate(id);
+    });
+    toast.success(`${ids.length} signal${ids.length === 1 ? "" : "s"} ${action === "approve" ? "approved" : "skipped"}`);
+    setSelectedSignals((prev) => {
+      const next = new Set(prev);
+      ids.forEach((id) => next.delete(id));
       return next;
     });
   };
@@ -677,7 +714,8 @@ function LeadDiscoveryPage() {
           ))}
         </div>
         <div className="mt-3 flex items-center justify-between">
-          {sources.length > 3 ? (
+          <div className="min-h-5">
+            {sources.length > 3 && (
             <button
               type="button"
               onClick={() => setShowAllSources((v) => !v)}
@@ -687,7 +725,8 @@ function LeadDiscoveryPage() {
                 ? "Hide sources"
                 : `Show all sources (${sources.length})`}
             </button>
-          ) : <span />}
+            )}
+          </div>
           <Button size="sm" onClick={() => scanMutation.mutate()} disabled={scanMutation.isPending}>
             <Play className="mr-1.5 h-4 w-4" />
             {scanMutation.isPending ? "Scanning..." : "Run signal scan"}
@@ -696,13 +735,24 @@ function LeadDiscoveryPage() {
 
         {/* Scan results inside Option 3 */}
         <div className="mt-6 border-t pt-4">
-          <div className="mb-3 flex items-center gap-2">
-            <Zap className="h-4 w-4 text-brand-turquoise" />
-            <h3 className="text-sm font-semibold">Signal scan results</h3>
-            {newSignals.length > 0 && (
-              <span className="rounded-full bg-brand-turquoise/15 px-2 py-0.5 text-xs font-medium text-brand-turquoise">
-                {newSignals.length} new
-              </span>
+          <div className="mb-3 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+            <div className="flex min-w-0 items-center gap-2">
+              <Zap className="h-4 w-4 shrink-0 text-brand-turquoise" />
+              <h3 className="truncate text-sm font-semibold">Signal scan results</h3>
+              {newSignals.length > 0 && (
+                <span className="shrink-0 rounded-full bg-brand-turquoise/15 px-2 py-0.5 text-xs font-medium text-brand-turquoise">
+                  {newSignals.length} new
+                </span>
+              )}
+            </div>
+            {newSignals.length > 5 && (
+              <button
+                type="button"
+                onClick={() => setShowAllSignals((v) => !v)}
+                className="text-sm font-medium text-brand-blue hover:underline"
+              >
+                {showAllSignals ? "Hide signals" : `Show all signals (${newSignals.length})`}
+              </button>
             )}
           </div>
 
@@ -711,90 +761,119 @@ function LeadDiscoveryPage() {
           ) : newSignals.length === 0 ? (
             <EmptyState icon={Zap} message="No new signals. Run a scan to pull fresh results." />
           ) : (
-            <div className="overflow-hidden rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Company</TableHead>
-                    <TableHead>Signal</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Source</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {(showAllSignals ? newSignals : newSignals.slice(0, 5)).map((sig) => {
-                    const signalType = sig.raw_data?.signal_type;
-                    const signalDesc = sig.raw_data?.signal_description;
-                    const isApproving = approveMutation.isPending && approveMutation.variables === sig.id;
-                    const isDismissing = dismissMutation.isPending && dismissMutation.variables === sig.id;
-                    return (
-                      <TableRow key={sig.id}>
-                        <TableCell className="font-medium">{sig.company_name ?? "—"}</TableCell>
-                        <TableCell className="max-w-sm text-sm text-muted-foreground">
-                          {sig.signal_url ? (
-                            <a
-                              href={sig.signal_url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="hover:underline"
-                            >
-                              {signalDesc ?? sig.signal_url}
-                            </a>
-                          ) : (
-                            signalDesc ?? "—"
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {signalType && (
-                            <StatusBadge
-                              label={signalType}
-                              tone={signalTones[signalType] ?? "muted"}
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/20 p-3">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
+                  onClick={toggleAllSignals}
+                >
+                  {allSignalsSelected ? "Clear all" : "Select all"}
+                </Button>
+                <span className="text-xs text-muted-foreground">
+                  {selectedSignalIds.length} selected
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
+                  disabled={selectedSignalIds.length === 0}
+                  onClick={() => bulkSetSignals(selectedSignalIds, "approve")}
+                >
+                  Approve selected
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
+                  disabled={selectedSignalIds.length === 0}
+                  onClick={() => bulkSetSignals(selectedSignalIds, "skip")}
+                >
+                  Skip selected
+                </Button>
+              </div>
+              <div className="overflow-hidden rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-10"></TableHead>
+                      <TableHead>Company</TableHead>
+                      <TableHead>Signal</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Source</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {visibleSignals.map((sig) => {
+                      const signalType = sig.raw_data?.signal_type;
+                      const signalDesc = sig.raw_data?.signal_description;
+                      const isApproving = approveMutation.isPending && approveMutation.variables === sig.id;
+                      const isDismissing = dismissMutation.isPending && dismissMutation.variables === sig.id;
+                      return (
+                        <TableRow key={sig.id}>
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedSignals.has(sig.id)}
+                              onCheckedChange={() => toggleSignalSelect(sig.id)}
                             />
-                          )}
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{sig.source}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {sig.created_at?.slice(0, 10)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-1.5">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
-                              onClick={() => approveMutation.mutate(sig.id)}
-                              disabled={isApproving || isDismissing}
-                            >
-                              {isApproving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Approve"}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => dismissMutation.mutate(sig.id)}
-                              disabled={isApproving || isDismissing}
-                            >
-                              {isDismissing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Skip"}
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-          {newSignals.length > 5 && (
-            <div className="mt-3">
-              <button
-                type="button"
-                onClick={() => setShowAllSignals((v) => !v)}
-                className="text-sm font-medium text-brand-blue hover:underline"
-              >
-                {showAllSignals ? "Hide signals" : `Show all signals (${newSignals.length})`}
-              </button>
+                          </TableCell>
+                          <TableCell className="font-medium">{sig.company_name ?? "—"}</TableCell>
+                          <TableCell className="max-w-sm text-sm text-muted-foreground">
+                            {sig.signal_url ? (
+                              <a
+                                href={sig.signal_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="hover:underline"
+                              >
+                                {signalDesc ?? sig.signal_url}
+                              </a>
+                            ) : (
+                              signalDesc ?? "—"
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {signalType && (
+                              <StatusBadge
+                                label={signalType}
+                                tone={signalTones[signalType] ?? "muted"}
+                              />
+                            )}
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{sig.source}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {sig.created_at?.slice(0, 10)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-1.5">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
+                                onClick={() => approveMutation.mutate(sig.id)}
+                                disabled={isApproving || isDismissing}
+                              >
+                                {isApproving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Approve"}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => dismissMutation.mutate(sig.id)}
+                                disabled={isApproving || isDismissing}
+                              >
+                                {isDismissing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Skip"}
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
           )}
         </div>
@@ -1019,6 +1098,7 @@ function LeadDiscoveryPage() {
           ].filter((s) => s.items.length > 0);
 
           const bulkSetIds = (ids: string[], status: LeadStatus) => {
+            if (ids.length === 0) return;
             ids.forEach((id) => updateStatusMutation.mutate({ id, status }));
             toast.success(`${ids.length} lead${ids.length === 1 ? "" : "s"} ${status.toLowerCase()}`);
             setSelected((prev) => {
@@ -1032,18 +1112,35 @@ function LeadDiscoveryPage() {
             <div className="space-y-6">
               {sections.map((s) => {
                 const sectionSelected = s.items.filter((l) => selected.has(l.id)).map((l) => l.id);
+                const allSectionSelected = sectionSelected.length === s.items.length;
+                const toggleAllSection = () => {
+                  setSelected((prev) => {
+                    const next = new Set(prev);
+                    if (allSectionSelected) s.items.forEach((l) => next.delete(l.id));
+                    else s.items.forEach((l) => next.add(l.id));
+                    return next;
+                  });
+                };
                 return (
                   <div key={s.title} className="rounded-lg border bg-muted/10 p-4">
-                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                    <div className="mb-3 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
                       <div className="flex items-center gap-2">
                         <span className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-semibold ${s.tone}`}>
                           {s.title}
                         </span>
                         <span className="text-xs text-muted-foreground">{s.items.length} {s.items.length === 1 ? "lead" : "leads"}</span>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center justify-end gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
+                          onClick={toggleAllSection}
+                        >
+                          {allSectionSelected ? "Clear all" : "Select all"}
+                        </Button>
                         <span className="text-xs text-muted-foreground">
-                          {sectionSelected.length > 0 ? `${sectionSelected.length} selected` : "Select rows to bulk action"}
+                          {sectionSelected.length} selected
                         </span>
                         <Button
                           size="sm"
@@ -1057,6 +1154,7 @@ function LeadDiscoveryPage() {
                         <Button
                           size="sm"
                           variant="outline"
+                          className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
                           disabled={sectionSelected.length === 0}
                           onClick={() => bulkSetIds(sectionSelected, "Skipped")}
                         >
