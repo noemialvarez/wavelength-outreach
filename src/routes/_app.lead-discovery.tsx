@@ -67,7 +67,8 @@ type DiscoverySignal = {
 
 type DescriptionMatch = {
   id?: string;
-  company: string;
+  company?: string;
+  company_name?: string;
   website?: string;
   url?: string;
   industry?: string;
