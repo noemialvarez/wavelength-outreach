@@ -8,7 +8,7 @@ export type IcpFilters = {
   companyNames: string[];
   titles: string[];
   industries: string[];
-  companySize: string;
+  companySizes: string[];
   geography: string;
 };
 export type Lead = {
