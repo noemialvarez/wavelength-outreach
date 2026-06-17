@@ -295,7 +295,7 @@ function LeadDiscoveryPage() {
       {/* Option 1 — ICP filters */}
       <Card className="p-6">
         <div className="mb-4">
-          <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-brand-blue">
+          <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-brand-turquoise">
             Option 1
           </div>
           <h2 className="text-base font-semibold">By ICP filters</h2>
@@ -406,7 +406,7 @@ function LeadDiscoveryPage() {
       {/* Option 2 — By Company Description */}
       <Card className="p-6">
         <div className="mb-4">
-          <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-brand-blue">
+          <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-brand-turquoise">
             Option 2
           </div>
           <h2 className="text-base font-semibold">By company description</h2>
@@ -575,7 +575,7 @@ function LeadDiscoveryPage() {
       <Card className="p-6">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-brand-blue">
+            <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-brand-turquoise">
               Option 3
             </div>
             <h2 className="text-base font-semibold">By sources</h2>
