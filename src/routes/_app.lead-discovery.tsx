@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Plus, Play, Radar, Trash2, Search, Loader2, Zap, UserSearch } from "lucide-react";
+import { Plus, Play, Radar, Trash2, Search, Loader2, Zap, UserSearch, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/table";
 import { EmptyState } from "@/components/empty-state";
 import { StatusBadge } from "@/components/status-badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { store, useStore, uid, type SignalType, type LeadStatus } from "@/lib/store";
 import api from "@/lib/api";
 
@@ -566,6 +567,7 @@ function LeadDiscoveryPage() {
                 {filtered.map((l: {
                   id: string; company: string; notes?: string; signalType?: SignalType;
                   name: string; email?: string; linkedin_url?: string; status: LeadStatus; created_at: string;
+                  enrichment_data?: { email_source?: string };
                 }) => (
                   <TableRow key={l.id}>
                     <TableCell>
@@ -600,6 +602,16 @@ function LeadDiscoveryPage() {
                             }
                           }}
                         />
+                        {l.enrichment_data?.email_source === "apollo" && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Mail className="h-3.5 w-3.5 shrink-0 text-brand-blue" />
+                              </TooltipTrigger>
+                              <TooltipContent>Email found via Apollo</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
                         <Button
                           size="icon"
                           variant="ghost"
