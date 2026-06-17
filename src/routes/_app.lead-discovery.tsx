@@ -322,7 +322,7 @@ function LeadDiscoveryPage() {
           industries: icp.industries,
           companySizes: icp.companySizes,
           geography: icp.geography,
-        });
+        }, { timeout: 8000 });
         const d = r.data;
         const raw: Array<Record<string, string>> = Array.isArray(d)
           ? d
@@ -332,6 +332,10 @@ function LeadDiscoveryPage() {
         // backend unavailable — fall through to mock
       }
       return buildMockIcpMatches();
+    },
+    onMutate: () => {
+      setIcpResults(buildMockIcpMatches());
+      setApprovedIcpMatches(new Set());
     },
     onSuccess: (data) => {
       setIcpResults(data);
