@@ -520,10 +520,10 @@ function LeadDiscoveryPage() {
                 {descResults.length} matching {descResults.length === 1 ? "company" : "companies"}
               </div>
               {descResults.map((m, i) => {
-                const key = m.id ?? `${m.company}-${i}`;
+                const key = m.id ?? `${m.company_name ?? m.company ?? "unknown"}-${i}`;
                 const why = m.whyMatches ?? m.why_it_matches;
                 const site = m.website ?? m.url;
-                const approved = approvedMatches.has(m.id ?? m.company);
+                const approved = approvedMatches.has(m.id ?? m.company_name ?? m.company ?? "");
                 return (
                   <div key={key} className="rounded-md border bg-card p-4 space-y-2">
                     <div className="flex items-start justify-between gap-3">
