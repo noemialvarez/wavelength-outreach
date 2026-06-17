@@ -1029,22 +1029,28 @@ function LeadDiscoveryPage() {
                         </span>
                         <span className="text-xs text-muted-foreground">{s.items.length} {s.items.length === 1 ? "lead" : "leads"}</span>
                       </div>
-                      {sectionSelected.length > 0 && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-muted-foreground">{sectionSelected.length} selected</span>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
-                            onClick={() => bulkSetIds(sectionSelected, "Approved")}
-                          >
-                            Approve selected
-                          </Button>
-                          <Button size="sm" variant="outline" onClick={() => bulkSetIds(sectionSelected, "Skipped")}>
-                            Skip selected
-                          </Button>
-                        </div>
-                      )}
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">
+                          {sectionSelected.length > 0 ? `${sectionSelected.length} selected` : "Select rows to bulk action"}
+                        </span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
+                          disabled={sectionSelected.length === 0}
+                          onClick={() => bulkSetIds(sectionSelected, "Approved")}
+                        >
+                          Approve selected
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={sectionSelected.length === 0}
+                          onClick={() => bulkSetIds(sectionSelected, "Skipped")}
+                        >
+                          Skip selected
+                        </Button>
+                      </div>
                     </div>
                     {renderTable(s.items)}
                   </div>
