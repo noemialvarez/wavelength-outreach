@@ -30,11 +30,11 @@ Stack
 •	LinkedIn automation — Phantombuster (in progress)
 ________________________________________
 Live App
-https://wavelength-outreach.lovable.app/lead-discovery
+**https://wavelength-outreach.lovable.app/lead-discovery**
 ________________________________________
 About
 Built by Noemi Alvarez, founder of InsightSphere — — Conversational AI startup transforming website interactions into qualified revenue opportunities.
 ________________________________________
-How it Works - Demo
+How it Works - **Demo**
 
-https://github.com/noemialvarez/wavelength-outreach/assets/YOUR-VIDEO-FILE.mp4
+(https://github.com/noemialvarez/wavelength-outreach/assets/YOUR-VIDEO-FILE.mp4)
