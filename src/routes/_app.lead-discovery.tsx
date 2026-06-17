@@ -692,104 +692,102 @@ function LeadDiscoveryPage() {
             {scanMutation.isPending ? "Scanning..." : "Run signal scan"}
           </Button>
         </div>
-      </Card>
 
-
-      {/* Signals */}
-      <Card className="p-6">
-        <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+        {/* Scan results inside Option 3 */}
+        <div className="mt-6 border-t pt-4">
+          <div className="mb-3 flex items-center gap-2">
             <Zap className="h-4 w-4 text-brand-turquoise" />
-            <h2 className="text-base font-semibold">Signals</h2>
+            <h3 className="text-sm font-semibold">Signal scan results</h3>
             {newSignals.length > 0 && (
               <span className="rounded-full bg-brand-turquoise/15 px-2 py-0.5 text-xs font-medium text-brand-turquoise">
                 {newSignals.length} new
               </span>
             )}
           </div>
-        </div>
 
-        {signalsLoading ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">Loading signals…</p>
-        ) : newSignals.length === 0 ? (
-          <EmptyState icon={Zap} message="No new signals. Run a scan to pull fresh results." />
-        ) : (
-          <div className="overflow-hidden rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Company</TableHead>
-                  <TableHead>Signal</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Source</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {newSignals.map((sig) => {
-                  const signalType = sig.raw_data?.signal_type;
-                  const signalDesc = sig.raw_data?.signal_description;
-                  const isApproving = approveMutation.isPending && approveMutation.variables === sig.id;
-                  const isDismissing = dismissMutation.isPending && dismissMutation.variables === sig.id;
-                  return (
-                    <TableRow key={sig.id}>
-                      <TableCell className="font-medium">{sig.company_name ?? "—"}</TableCell>
-                      <TableCell className="max-w-sm text-sm text-muted-foreground">
-                        {sig.signal_url ? (
-                          <a
-                            href={sig.signal_url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="hover:underline"
-                          >
-                            {signalDesc ?? sig.signal_url}
-                          </a>
-                        ) : (
-                          signalDesc ?? "—"
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {signalType && (
-                          <StatusBadge
-                            label={signalType}
-                            tone={signalTones[signalType] ?? "muted"}
-                          />
-                        )}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{sig.source}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {sig.created_at?.slice(0, 10)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1.5">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
-                            onClick={() => approveMutation.mutate(sig.id)}
-                            disabled={isApproving || isDismissing}
-                          >
-                            {isApproving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Approve"}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => dismissMutation.mutate(sig.id)}
-                            disabled={isApproving || isDismissing}
-                          >
-                            {isDismissing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Skip"}
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
-        )}
+          {signalsLoading ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">Loading signals…</p>
+          ) : newSignals.length === 0 ? (
+            <EmptyState icon={Zap} message="No new signals. Run a scan to pull fresh results." />
+          ) : (
+            <div className="overflow-hidden rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Company</TableHead>
+                    <TableHead>Signal</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Source</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {newSignals.map((sig) => {
+                    const signalType = sig.raw_data?.signal_type;
+                    const signalDesc = sig.raw_data?.signal_description;
+                    const isApproving = approveMutation.isPending && approveMutation.variables === sig.id;
+                    const isDismissing = dismissMutation.isPending && dismissMutation.variables === sig.id;
+                    return (
+                      <TableRow key={sig.id}>
+                        <TableCell className="font-medium">{sig.company_name ?? "—"}</TableCell>
+                        <TableCell className="max-w-sm text-sm text-muted-foreground">
+                          {sig.signal_url ? (
+                            <a
+                              href={sig.signal_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="hover:underline"
+                            >
+                              {signalDesc ?? sig.signal_url}
+                            </a>
+                          ) : (
+                            signalDesc ?? "—"
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {signalType && (
+                            <StatusBadge
+                              label={signalType}
+                              tone={signalTones[signalType] ?? "muted"}
+                            />
+                          )}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{sig.source}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {sig.created_at?.slice(0, 10)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1.5">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
+                              onClick={() => approveMutation.mutate(sig.id)}
+                              disabled={isApproving || isDismissing}
+                            >
+                              {isApproving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Approve"}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => dismissMutation.mutate(sig.id)}
+                              disabled={isApproving || isDismissing}
+                            >
+                              {isDismissing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Skip"}
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </div>
       </Card>
+
 
       {/* Leads table */}
       <Card className="p-6">
@@ -851,165 +849,196 @@ function LeadDiscoveryPage() {
           <p className="py-8 text-center text-sm text-muted-foreground">Loading leads…</p>
         ) : filtered.length === 0 ? (
           <EmptyState icon={Radar} message="No leads yet. Configure your sources and run a scan." />
-        ) : (
-          <div className="overflow-hidden rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-10"></TableHead>
-                  <TableHead>Company</TableHead>
-                  <TableHead>Signal</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Founder</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>LinkedIn</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map((l: {
-                  id: string; company: string; notes?: string; signalType?: SignalType;
-                  name: string; email?: string; linkedin_url?: string; status: LeadStatus; created_at: string;
-                  enrichment_data?: { email_source?: string };
-                }) => (
-                  <TableRow key={l.id}>
-                    <TableCell>
-                      <Checkbox
-                        checked={selected.has(l.id)}
-                        onCheckedChange={() => toggleSelect(l.id)}
-                      />
-                    </TableCell>
-                    <TableCell className="font-medium">{l.company}</TableCell>
-                    <TableCell className="max-w-xs text-sm text-muted-foreground">
-                      {l.notes}
-                    </TableCell>
-                    <TableCell>
-                      {l.signalType && (
-                        <StatusBadge label={l.signalType} tone={signalTones[l.signalType] ?? "muted"} />
-                      )}
-                    </TableCell>
-                    <TableCell>{l.name}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Input
-                          className="h-7 w-40 text-sm"
-                          placeholder="founder@co.com"
-                          value={localEmails[l.id] ?? l.email ?? ""}
-                          onChange={(e) =>
-                            setLocalEmails((prev) => ({ ...prev, [l.id]: e.target.value }))
-                          }
-                          onBlur={() => {
-                            const val = localEmails[l.id];
-                            if (val !== undefined && val !== (l.email ?? "")) {
-                              updateEmailMutation.mutate({ id: l.id, email: val });
-                            }
-                          }}
-                        />
-                        {l.enrichment_data?.email_source === "apollo" && (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Mail className="h-3.5 w-3.5 shrink-0 text-brand-blue" />
-                              </TooltipTrigger>
-                              <TooltipContent>Email found via Apollo</TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        )}
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
-                          title="Look up email via Apollo"
-                          onClick={() => findEmailMutation.mutate(l.id)}
-                          disabled={findEmailMutation.isPending && findEmailMutation.variables === l.id}
-                        >
-                          {findEmailMutation.isPending && findEmailMutation.variables === l.id ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <Search className="h-3.5 w-3.5" />
-                          )}
-                        </Button>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {l.linkedin_url && (
-                        <a
-                          href={l.linkedin_url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-sm text-brand-blue hover:underline"
-                        >
-                          View
-                        </a>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <StatusBadge label={l.status} tone={statusTones[l.status as LeadStatus] ?? "muted"} />
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {l.created_at?.slice(0, 10)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1.5">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          title="Find founder via LinkedIn"
-                          onClick={() => findFounderMutation.mutate(l.id)}
-                          disabled={findFounderMutation.isPending && findFounderMutation.variables === l.id}
-                        >
-                          {findFounderMutation.isPending && findFounderMutation.variables === l.id ? (
-                            <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <UserSearch className="mr-1.5 h-3.5 w-3.5" />
-                          )}
-                          Find founder
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
-                          onClick={() => setLeadStatus(l.id, "Approved")}
-                          disabled={l.status === "Approved" || l.status === "Pushed"}
-                        >
-                          Approve
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => setLeadStatus(l.id, "Skipped")}
-                        >
-                          Skip
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="text-muted-foreground hover:text-destructive"
-                          title="Delete lead"
-                          onClick={() => {
-                            if (confirm(`Delete lead "${l.company}"?`)) {
-                              deleteLeadMutation.mutate(l.id);
-                            }
-                          }}
-                          disabled={deleteLeadMutation.isPending && deleteLeadMutation.variables === l.id}
-                        >
-                          {deleteLeadMutation.isPending && deleteLeadMutation.variables === l.id ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-3.5 w-3.5" />
-                          )}
-                        </Button>
-                      </div>
-                    </TableCell>
+        ) : (() => {
+          type LeadRow = {
+            id: string; company: string; notes?: string; signalType?: SignalType;
+            name: string; email?: string; linkedin_url?: string; status: LeadStatus; created_at: string;
+            enrichment_data?: { email_source?: string }; source?: string;
+          };
+          const rows = filtered as LeadRow[];
+          const icpLeads = rows.filter((l) => l.source === "icp_filters");
+          const descLeads = rows.filter((l) => l.source === "company_description");
+          const signalLeads = rows.filter(
+            (l) => l.source !== "icp_filters" && l.source !== "company_description",
+          );
+
+          const renderTable = (items: LeadRow[]) => (
+            <div className="overflow-hidden rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-10"></TableHead>
+                    <TableHead>Company</TableHead>
+                    <TableHead>Signal</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Founder</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>LinkedIn</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
+                </TableHeader>
+                <TableBody>
+                  {items.map((l) => (
+                    <TableRow key={l.id}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selected.has(l.id)}
+                          onCheckedChange={() => toggleSelect(l.id)}
+                        />
+                      </TableCell>
+                      <TableCell className="font-medium">{l.company}</TableCell>
+                      <TableCell className="max-w-xs text-sm text-muted-foreground">
+                        {l.notes}
+                      </TableCell>
+                      <TableCell>
+                        {l.signalType && (
+                          <StatusBadge label={l.signalType} tone={signalTones[l.signalType] ?? "muted"} />
+                        )}
+                      </TableCell>
+                      <TableCell>{l.name}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Input
+                            className="h-7 w-40 text-sm"
+                            placeholder="founder@co.com"
+                            value={localEmails[l.id] ?? l.email ?? ""}
+                            onChange={(e) =>
+                              setLocalEmails((prev) => ({ ...prev, [l.id]: e.target.value }))
+                            }
+                            onBlur={() => {
+                              const val = localEmails[l.id];
+                              if (val !== undefined && val !== (l.email ?? "")) {
+                                updateEmailMutation.mutate({ id: l.id, email: val });
+                              }
+                            }}
+                          />
+                          {l.enrichment_data?.email_source === "apollo" && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Mail className="h-3.5 w-3.5 shrink-0 text-brand-blue" />
+                                </TooltipTrigger>
+                                <TooltipContent>Email found via Apollo</TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
+                            title="Look up email via Apollo"
+                            onClick={() => findEmailMutation.mutate(l.id)}
+                            disabled={findEmailMutation.isPending && findEmailMutation.variables === l.id}
+                          >
+                            {findEmailMutation.isPending && findEmailMutation.variables === l.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Search className="h-3.5 w-3.5" />
+                            )}
+                          </Button>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {l.linkedin_url && (
+                          <a
+                            href={l.linkedin_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-sm text-brand-blue hover:underline"
+                          >
+                            View
+                          </a>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <StatusBadge label={l.status} tone={statusTones[l.status as LeadStatus] ?? "muted"} />
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {l.created_at?.slice(0, 10)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1.5">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            title="Find founder via LinkedIn"
+                            onClick={() => findFounderMutation.mutate(l.id)}
+                            disabled={findFounderMutation.isPending && findFounderMutation.variables === l.id}
+                          >
+                            {findFounderMutation.isPending && findFounderMutation.variables === l.id ? (
+                              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <UserSearch className="mr-1.5 h-3.5 w-3.5" />
+                            )}
+                            Find founder
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
+                            onClick={() => setLeadStatus(l.id, "Approved")}
+                            disabled={l.status === "Approved" || l.status === "Pushed"}
+                          >
+                            Approve
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setLeadStatus(l.id, "Skipped")}
+                          >
+                            Skip
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="text-muted-foreground hover:text-destructive"
+                            title="Delete lead"
+                            onClick={() => {
+                              if (confirm(`Delete lead "${l.company}"?`)) {
+                                deleteLeadMutation.mutate(l.id);
+                              }
+                            }}
+                            disabled={deleteLeadMutation.isPending && deleteLeadMutation.variables === l.id}
+                          >
+                            {deleteLeadMutation.isPending && deleteLeadMutation.variables === l.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-3.5 w-3.5" />
+                            )}
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          );
+
+          const sections: Array<{ title: string; items: LeadRow[] }> = [
+            { title: "Leads from ICP Filters", items: icpLeads },
+            { title: "Leads from Company Description", items: descLeads },
+            { title: "Leads from Signal Scan", items: signalLeads },
+          ].filter((s) => s.items.length > 0);
+
+          return (
+            <div className="space-y-6">
+              {sections.map((s) => (
+                <div key={s.title}>
+                  <div className="mb-2 flex items-baseline gap-2">
+                    <h3 className="text-sm font-semibold">{s.title}</h3>
+                    <span className="text-xs text-muted-foreground">{s.items.length}</span>
+                  </div>
+                  {renderTable(s.items)}
+                </div>
+              ))}
+            </div>
+          );
+        })()}
       </Card>
+
 
       <div className="flex justify-end pt-2">
         <Link
