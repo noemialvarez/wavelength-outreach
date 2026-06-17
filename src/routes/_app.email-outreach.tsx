@@ -1,6 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, ChevronUp, Mail, RefreshCw, Upload } from "lucide-react";
+import { ArrowRight, ChevronDown, ChevronUp, Mail, RefreshCw, Upload } from "lucide-react";
+
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
