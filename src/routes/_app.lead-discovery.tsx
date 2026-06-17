@@ -88,10 +88,10 @@ function LeadDiscoveryPage() {
   const [showAllSources, setShowAllSources] = useState(false);
   const [descQuery, setDescQuery] = useState({
     description: "",
-    industry: "",
+    industries: [] as string[],
     geography: "",
     audience: "B2B" as "B2B" | "B2C",
-    size: "",
+    sizes: [] as string[],
   });
   const [descResults, setDescResults] = useState<DescriptionMatch[]>([]);
   const [approvedMatches, setApprovedMatches] = useState<Set<string>>(new Set());
