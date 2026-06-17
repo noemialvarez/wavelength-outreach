@@ -80,6 +80,8 @@ function LeadDiscoveryPage() {
     audience: "B2B" as "B2B" | "B2C",
     size: "",
   });
+  const [descResults, setDescResults] = useState<DescriptionMatch[]>([]);
+  const [approvedMatches, setApprovedMatches] = useState<Set<string>>(new Set());
 
 
   const queryClient = useQueryClient();
