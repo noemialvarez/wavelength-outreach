@@ -715,7 +715,8 @@ function LeadDiscoveryPage() {
           ))}
         </div>
         <div className="mt-3 flex items-center justify-between">
-          {sources.length > 3 ? (
+          <div className="min-h-5">
+            {sources.length > 3 && (
             <button
               type="button"
               onClick={() => setShowAllSources((v) => !v)}
@@ -725,7 +726,8 @@ function LeadDiscoveryPage() {
                 ? "Hide sources"
                 : `Show all sources (${sources.length})`}
             </button>
-          ) : <span />}
+            )}
+          </div>
           <Button size="sm" onClick={() => scanMutation.mutate()} disabled={scanMutation.isPending}>
             <Play className="mr-1.5 h-4 w-4" />
             {scanMutation.isPending ? "Scanning..." : "Run signal scan"}
@@ -873,17 +875,6 @@ function LeadDiscoveryPage() {
                   </TableBody>
                 </Table>
               </div>
-            </div>
-          )}
-          {newSignals.length > 5 && (
-            <div className="mt-3">
-              <button
-                type="button"
-                onClick={() => setShowAllSignals((v) => !v)}
-                className="text-sm font-medium text-brand-blue hover:underline"
-              >
-                {showAllSignals ? "Hide signals" : `Show all signals (${newSignals.length})`}
-              </button>
             </div>
           )}
         </div>
@@ -1108,6 +1099,7 @@ function LeadDiscoveryPage() {
           ].filter((s) => s.items.length > 0);
 
           const bulkSetIds = (ids: string[], status: LeadStatus) => {
+            if (ids.length === 0) return;
             ids.forEach((id) => updateStatusMutation.mutate({ id, status }));
             toast.success(`${ids.length} lead${ids.length === 1 ? "" : "s"} ${status.toLowerCase()}`);
             setSelected((prev) => {
@@ -1121,18 +1113,35 @@ function LeadDiscoveryPage() {
             <div className="space-y-6">
               {sections.map((s) => {
                 const sectionSelected = s.items.filter((l) => selected.has(l.id)).map((l) => l.id);
+                const allSectionSelected = sectionSelected.length === s.items.length;
+                const toggleAllSection = () => {
+                  setSelected((prev) => {
+                    const next = new Set(prev);
+                    if (allSectionSelected) s.items.forEach((l) => next.delete(l.id));
+                    else s.items.forEach((l) => next.add(l.id));
+                    return next;
+                  });
+                };
                 return (
                   <div key={s.title} className="rounded-lg border bg-muted/10 p-4">
-                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                    <div className="mb-3 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
                       <div className="flex items-center gap-2">
                         <span className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-semibold ${s.tone}`}>
                           {s.title}
                         </span>
                         <span className="text-xs text-muted-foreground">{s.items.length} {s.items.length === 1 ? "lead" : "leads"}</span>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center justify-end gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
+                          onClick={toggleAllSection}
+                        >
+                          {allSectionSelected ? "Clear all" : "Select all"}
+                        </Button>
                         <span className="text-xs text-muted-foreground">
-                          {sectionSelected.length > 0 ? `${sectionSelected.length} selected` : "Select rows to bulk action"}
+                          {sectionSelected.length} selected
                         </span>
                         <Button
                           size="sm"
@@ -1146,6 +1155,7 @@ function LeadDiscoveryPage() {
                         <Button
                           size="sm"
                           variant="outline"
+                          className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
                           disabled={sectionSelected.length === 0}
                           onClick={() => bulkSetIds(sectionSelected, "Skipped")}
                         >
