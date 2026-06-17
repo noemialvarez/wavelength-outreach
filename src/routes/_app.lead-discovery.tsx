@@ -420,28 +420,22 @@ function LeadDiscoveryPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="mb-1 block text-xs font-medium">Industry</label>
-              <Select
-                value={descQuery.industry || "any"}
-                onValueChange={(v) =>
-                  setDescQuery((q) => ({ ...q, industry: v === "any" ? "" : v }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Any industry" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="any">Any industry</SelectItem>
-                  <SelectItem value="SaaS">SaaS</SelectItem>
-                  <SelectItem value="Fintech">Fintech</SelectItem>
-                  <SelectItem value="Healthtech">Healthtech</SelectItem>
-                  <SelectItem value="E-commerce">E-commerce</SelectItem>
-                  <SelectItem value="Manufacturing">Manufacturing</SelectItem>
-                  <SelectItem value="Logistics">Logistics</SelectItem>
-                  <SelectItem value="Media">Media</SelectItem>
-                  <SelectItem value="Education">Education</SelectItem>
-                  <SelectItem value="Energy">Energy</SelectItem>
-                </SelectContent>
-              </Select>
+              <MultiSelect
+                options={[
+                  { value: "SaaS", label: "SaaS" },
+                  { value: "Fintech", label: "Fintech" },
+                  { value: "Healthtech", label: "Healthtech" },
+                  { value: "E-commerce", label: "E-commerce" },
+                  { value: "Manufacturing", label: "Manufacturing" },
+                  { value: "Logistics", label: "Logistics" },
+                  { value: "Media", label: "Media" },
+                  { value: "Education", label: "Education" },
+                  { value: "Energy", label: "Energy" },
+                ]}
+                value={descQuery.industries}
+                onChange={(v) => setDescQuery((q) => ({ ...q, industries: v }))}
+                placeholder="Select industries"
+              />
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium">Geography</label>
