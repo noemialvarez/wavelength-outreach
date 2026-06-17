@@ -566,7 +566,7 @@ function LeadDiscoveryPage() {
       <Card className="p-6">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-brand-turquoise">
+            <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-brand-blue">
               Option 3
             </div>
             <h2 className="text-base font-semibold">By sources</h2>
