@@ -335,18 +335,21 @@ function LeadDiscoveryPage() {
             <label className="mb-1 block text-xs font-medium">
               Industries <span className="text-muted-foreground">(optional)</span>
             </label>
-            <Input
-              value={icp.industries.join(", ")}
-              onChange={(e) =>
-                store.set((s) => ({
-                  ...s,
-                  icp: {
-                    ...s.icp,
-                    industries: e.target.value.split(",").map((t) => t.trim()).filter(Boolean),
-                  },
-                }))
-              }
-              placeholder="SaaS, Fintech"
+            <MultiSelect
+              options={[
+                { value: "SaaS", label: "SaaS" },
+                { value: "Fintech", label: "Fintech" },
+                { value: "Healthtech", label: "Healthtech" },
+                { value: "E-commerce", label: "E-commerce" },
+                { value: "Manufacturing", label: "Manufacturing" },
+                { value: "Logistics", label: "Logistics" },
+                { value: "Media", label: "Media" },
+                { value: "Education", label: "Education" },
+                { value: "Energy", label: "Energy" },
+              ]}
+              value={icp.industries}
+              onChange={(v) => store.set((s) => ({ ...s, icp: { ...s.icp, industries: v } }))}
+              placeholder="Select industries"
             />
           </div>
           <div>
