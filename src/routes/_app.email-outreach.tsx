@@ -1,6 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, ChevronUp, Mail, RefreshCw, Upload } from "lucide-react";
+import { ArrowRight, ChevronDown, ChevronUp, Mail, RefreshCw, Upload } from "lucide-react";
+
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -425,6 +426,16 @@ function EmailOutreachPage() {
           })}
         </div>
       )}
+
+      <div className="flex justify-end pt-2">
+        <Link
+          to="/sequence-monitor"
+          className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-pink hover:underline"
+        >
+          Next step <ArrowRight className="h-4 w-4" />
+        </Link>
+      </div>
     </div>
   );
 }
+

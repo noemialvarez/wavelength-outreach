@@ -1,13 +1,17 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Plus, Play, Radar, Trash2, Search, Loader2, Zap, UserSearch, Mail } from "lucide-react";
+import { Plus, Play, Radar, Trash2, Search, Loader2, Zap, UserSearch, Mail, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+
 import {
   Select,
   SelectContent,
@@ -68,6 +72,15 @@ function LeadDiscoveryPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [localEmails, setLocalEmails] = useState<Record<string, string>>({});
+  const [showAllSources, setShowAllSources] = useState(false);
+  const [descQuery, setDescQuery] = useState({
+    description: "",
+    industry: "",
+    geography: "",
+    audience: "B2B" as "B2B" | "B2C",
+    size: "",
+  });
+
 
   const queryClient = useQueryClient();
 
@@ -212,88 +225,13 @@ function LeadDiscoveryPage() {
         </p>
       </div>
 
-      {/* Sources */}
-      <Card className="p-6">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h2 className="text-base font-semibold">Sources</h2>
-            <p className="text-xs text-muted-foreground">Toggle which feeds power your scan.</p>
-          </div>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                store.set((s) => ({
-                  ...s,
-                  sources: [...s.sources, { id: uid(), name: "", url: "", enabled: true }],
-                }))
-              }
-            >
-              <Plus className="mr-1.5 h-4 w-4" /> Add source
-            </Button>
-            <Button size="sm" onClick={() => scanMutation.mutate()} disabled={scanMutation.isPending}>
-              <Play className="mr-1.5 h-4 w-4" />
-              {scanMutation.isPending ? "Scanning..." : "Run signal scan"}
-            </Button>
-          </div>
-        </div>
-        <div className="space-y-2">
-          {sources.map((src) => (
-            <div key={src.id} className="flex items-center gap-3 rounded-md border bg-muted/20 p-3">
-              <Switch
-                checked={src.enabled}
-                onCheckedChange={(v) =>
-                  store.set((s) => ({
-                    ...s,
-                    sources: s.sources.map((x) => (x.id === src.id ? { ...x, enabled: v } : x)),
-                  }))
-                }
-              />
-              <Input
-                placeholder="Source name"
-                value={src.name}
-                onChange={(e) =>
-                  store.set((s) => ({
-                    ...s,
-                    sources: s.sources.map((x) =>
-                      x.id === src.id ? { ...x, name: e.target.value } : x,
-                    ),
-                  }))
-                }
-                className="max-w-xs"
-              />
-              <Input
-                placeholder="https://..."
-                value={src.url}
-                onChange={(e) =>
-                  store.set((s) => ({
-                    ...s,
-                    sources: s.sources.map((x) =>
-                      x.id === src.id ? { ...x, url: e.target.value } : x,
-                    ),
-                  }))
-                }
-                className="flex-1"
-              />
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() =>
-                  store.set((s) => ({ ...s, sources: s.sources.filter((x) => x.id !== src.id) }))
-                }
-              >
-                <Trash2 className="h-4 w-4 text-muted-foreground" />
-              </Button>
-            </div>
-          ))}
-        </div>
-      </Card>
-
-      {/* ICP filters */}
+      {/* Option 1 — ICP filters */}
       <Card className="p-6">
         <div className="mb-4">
-          <h2 className="text-base font-semibold">ICP filters</h2>
+          <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-brand-pink">
+            Option 1
+          </div>
+          <h2 className="text-base font-semibold">By ICP filters</h2>
           <p className="text-xs text-muted-foreground">
             All filters are optional. Used to enrich leads through Sales Navigator. Saved automatically.
           </p>
@@ -372,6 +310,9 @@ function LeadDiscoveryPage() {
                 <SelectItem value="11-50">11-50</SelectItem>
                 <SelectItem value="51-200">51-200</SelectItem>
                 <SelectItem value="201-500">201-500</SelectItem>
+                <SelectItem value="501-1000">501-1000</SelectItem>
+                <SelectItem value="1001-5000">1001-5000</SelectItem>
+                <SelectItem value=">5000">&gt;5000</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -389,6 +330,216 @@ function LeadDiscoveryPage() {
           </div>
         </div>
       </Card>
+
+      {/* Option 2 — By Company Description */}
+      <Card className="p-6">
+        <div className="mb-4">
+          <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-brand-blue">
+            Option 2
+          </div>
+          <h2 className="text-base font-semibold">By company description</h2>
+          <p className="text-xs text-muted-foreground">
+            Describe the kind of company you want to find. We&apos;ll match against the broader web.
+          </p>
+        </div>
+        <div className="space-y-4">
+          <div>
+            <label className="mb-1 block text-xs font-medium">
+              Describe the company you&apos;re looking for
+            </label>
+            <Textarea
+              rows={4}
+              value={descQuery.description}
+              onChange={(e) => setDescQuery((q) => ({ ...q, description: e.target.value }))}
+              placeholder="e.g. Mid-size European SaaS companies selling sales enablement tools to enterprise revenue teams, with a strong focus on AI-assisted workflows."
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="mb-1 block text-xs font-medium">Industry</label>
+              <Select
+                value={descQuery.industry || "any"}
+                onValueChange={(v) =>
+                  setDescQuery((q) => ({ ...q, industry: v === "any" ? "" : v }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Any industry" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="any">Any industry</SelectItem>
+                  <SelectItem value="SaaS">SaaS</SelectItem>
+                  <SelectItem value="Fintech">Fintech</SelectItem>
+                  <SelectItem value="Healthtech">Healthtech</SelectItem>
+                  <SelectItem value="E-commerce">E-commerce</SelectItem>
+                  <SelectItem value="Manufacturing">Manufacturing</SelectItem>
+                  <SelectItem value="Logistics">Logistics</SelectItem>
+                  <SelectItem value="Media">Media</SelectItem>
+                  <SelectItem value="Education">Education</SelectItem>
+                  <SelectItem value="Energy">Energy</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium">Geography</label>
+              <Input
+                value={descQuery.geography}
+                onChange={(e) => setDescQuery((q) => ({ ...q, geography: e.target.value }))}
+                placeholder="e.g. Switzerland, DACH, Europe"
+              />
+            </div>
+            <div>
+              <label className="mb-2 block text-xs font-medium">Audience</label>
+              <RadioGroup
+                value={descQuery.audience}
+                onValueChange={(v) =>
+                  setDescQuery((q) => ({ ...q, audience: v as "B2B" | "B2C" }))
+                }
+                className="flex gap-4"
+              >
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="B2B" id="aud-b2b" />
+                  <Label htmlFor="aud-b2b" className="text-sm font-normal">B2B</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="B2C" id="aud-b2c" />
+                  <Label htmlFor="aud-b2c" className="text-sm font-normal">B2C</Label>
+                </div>
+              </RadioGroup>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium">Company size</label>
+              <Select
+                value={descQuery.size || "any"}
+                onValueChange={(v) =>
+                  setDescQuery((q) => ({ ...q, size: v === "any" ? "" : v }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Any size" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="any">Any size</SelectItem>
+                  <SelectItem value="1-10">1-10</SelectItem>
+                  <SelectItem value="11-50">11-50</SelectItem>
+                  <SelectItem value="51-200">51-200</SelectItem>
+                  <SelectItem value="201-500">201-500</SelectItem>
+                  <SelectItem value="501-1000">501-1000</SelectItem>
+                  <SelectItem value="1001-5000">1001-5000</SelectItem>
+                  <SelectItem value=">5000">&gt;5000</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <Button
+              size="sm"
+              onClick={() => {
+                if (!descQuery.description.trim()) {
+                  toast.error("Add a company description first");
+                  return;
+                }
+                toast.success("Description-based search queued");
+              }}
+            >
+              <Search className="mr-1.5 h-4 w-4" /> Find matching companies
+            </Button>
+          </div>
+        </div>
+      </Card>
+
+      {/* Option 3 — Sources */}
+      <Card className="p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-brand-turquoise">
+              Option 3
+            </div>
+            <h2 className="text-base font-semibold">By sources</h2>
+            <p className="text-xs text-muted-foreground">Toggle which feeds power your scan.</p>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                store.set((s) => ({
+                  ...s,
+                  sources: [...s.sources, { id: uid(), name: "", url: "", enabled: true }],
+                }))
+              }
+            >
+              <Plus className="mr-1.5 h-4 w-4" /> Add source
+            </Button>
+            <Button size="sm" onClick={() => scanMutation.mutate()} disabled={scanMutation.isPending}>
+              <Play className="mr-1.5 h-4 w-4" />
+              {scanMutation.isPending ? "Scanning..." : "Run signal scan"}
+            </Button>
+          </div>
+        </div>
+        <div className="space-y-2">
+          {(showAllSources ? sources : sources.slice(0, 3)).map((src) => (
+            <div key={src.id} className="flex items-center gap-3 rounded-md border bg-muted/20 p-3">
+              <Switch
+                checked={src.enabled}
+                onCheckedChange={(v) =>
+                  store.set((s) => ({
+                    ...s,
+                    sources: s.sources.map((x) => (x.id === src.id ? { ...x, enabled: v } : x)),
+                  }))
+                }
+              />
+              <Input
+                placeholder="Source name"
+                value={src.name}
+                onChange={(e) =>
+                  store.set((s) => ({
+                    ...s,
+                    sources: s.sources.map((x) =>
+                      x.id === src.id ? { ...x, name: e.target.value } : x,
+                    ),
+                  }))
+                }
+                className="max-w-xs"
+              />
+              <Input
+                placeholder="https://..."
+                value={src.url}
+                onChange={(e) =>
+                  store.set((s) => ({
+                    ...s,
+                    sources: s.sources.map((x) =>
+                      x.id === src.id ? { ...x, url: e.target.value } : x,
+                    ),
+                  }))
+                }
+                className="flex-1"
+              />
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() =>
+                  store.set((s) => ({ ...s, sources: s.sources.filter((x) => x.id !== src.id) }))
+                }
+              >
+                <Trash2 className="h-4 w-4 text-muted-foreground" />
+              </Button>
+            </div>
+          ))}
+        </div>
+        {sources.length > 3 && (
+          <button
+            type="button"
+            onClick={() => setShowAllSources((v) => !v)}
+            className="mt-3 text-sm font-medium text-brand-blue hover:underline"
+          >
+            {showAllSources
+              ? "Show fewer sources"
+              : `Show all sources (${sources.length})`}
+          </button>
+        )}
+      </Card>
+
 
       {/* Signals */}
       <Card className="p-6">
@@ -687,6 +838,16 @@ function LeadDiscoveryPage() {
           </div>
         )}
       </Card>
+
+      <div className="flex justify-end pt-2">
+        <Link
+          to="/email-outreach"
+          className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-pink hover:underline"
+        >
+          Next step <ArrowRight className="h-4 w-4" />
+        </Link>
+      </div>
     </div>
+
   );
 }
