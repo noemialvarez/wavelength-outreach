@@ -102,6 +102,8 @@ function LeadDiscoveryPage() {
   });
   const [descResults, setDescResults] = useState<DescriptionMatch[]>([]);
   const [approvedMatches, setApprovedMatches] = useState<Set<string>>(new Set());
+  const [icpResults, setIcpResults] = useState<DescriptionMatch[]>([]);
+  const [approvedIcpMatches, setApprovedIcpMatches] = useState<Set<string>>(new Set());
 
 
   const queryClient = useQueryClient();
