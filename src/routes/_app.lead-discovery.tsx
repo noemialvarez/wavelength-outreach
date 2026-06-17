@@ -139,6 +139,15 @@ function LeadDiscoveryPage() {
     onError: () => toast.error("Failed to update lead status"),
   });
 
+  const deleteLeadMutation = useMutation({
+    mutationFn: (id: string) => api.delete(`/api/leads/${id}`),
+    onSuccess: () => {
+      toast.success("Lead deleted");
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+    },
+    onError: () => toast.error("Failed to delete lead"),
+  });
+
   const updateEmailMutation = useMutation({
     mutationFn: ({ id, email }: { id: string; email: string }) =>
       api.patch(`/api/leads/${id}`, { email }),
