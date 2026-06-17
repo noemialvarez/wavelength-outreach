@@ -67,7 +67,8 @@ type DiscoverySignal = {
 
 type DescriptionMatch = {
   id?: string;
-  company: string;
+  company?: string;
+  company_name?: string;
   website?: string;
   url?: string;
   industry?: string;
@@ -238,16 +239,17 @@ function LeadDiscoveryPage() {
   const approveMatchMutation = useMutation({
     mutationFn: (m: DescriptionMatch) =>
       api.post("/api/leads", {
-        name: m.company,
-        company: m.company,
-        notes: m.whyMatches ?? m.why_it_matches ?? m.description ?? "Matched by company description",
+        name: m.company_name ?? m.company ?? "",
+        company: m.company_name ?? m.company ?? "",
+        website: m.website ?? m.url ?? "",
+        notes: m.description ?? "",
         source: "company_description",
         status: "Approved",
       }),
     onSuccess: (_d, m) => {
-      const key = m.id ?? m.company;
+      const key = m.id ?? m.company_name ?? m.company ?? "";
       setApprovedMatches((prev) => new Set(prev).add(key));
-      toast.success(`${m.company} added as lead`);
+      toast.success(`${m.company_name ?? m.company} added as lead`);
       queryClient.invalidateQueries({ queryKey: ["leads"] });
     },
     onError: () => toast.error("Failed to add lead"),
@@ -518,10 +520,10 @@ function LeadDiscoveryPage() {
                 {descResults.length} matching {descResults.length === 1 ? "company" : "companies"}
               </div>
               {descResults.map((m, i) => {
-                const key = m.id ?? `${m.company}-${i}`;
+                const key = m.id ?? `${m.company_name ?? m.company ?? "unknown"}-${i}`;
                 const why = m.whyMatches ?? m.why_it_matches;
                 const site = m.website ?? m.url;
-                const approved = approvedMatches.has(m.id ?? m.company);
+                const approved = approvedMatches.has(m.id ?? m.company_name ?? m.company ?? "");
                 return (
                   <div key={key} className="rounded-md border bg-card p-4 space-y-2">
                     <div className="flex items-start justify-between gap-3">
