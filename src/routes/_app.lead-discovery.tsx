@@ -999,23 +999,56 @@ function LeadDiscoveryPage() {
             </div>
           );
 
-          const sections: Array<{ title: string; items: LeadRow[] }> = [
-            { title: "Leads from ICP Filters", items: icpLeads },
-            { title: "Leads from Company Description", items: descLeads },
-            { title: "Leads from Signal Scan", items: signalLeads },
+          const sections: Array<{ title: string; tone: string; items: LeadRow[] }> = [
+            { title: "Leads from ICP Filters", tone: "bg-brand-blue/10 text-brand-blue border-brand-blue/30", items: icpLeads },
+            { title: "Leads from Company Description", tone: "bg-brand-pink/10 text-brand-pink border-brand-pink/30", items: descLeads },
+            { title: "Leads from Signal Scan", tone: "bg-brand-turquoise/15 text-brand-turquoise border-brand-turquoise/30", items: signalLeads },
           ].filter((s) => s.items.length > 0);
+
+          const bulkSetIds = (ids: string[], status: LeadStatus) => {
+            ids.forEach((id) => updateStatusMutation.mutate({ id, status }));
+            toast.success(`${ids.length} lead${ids.length === 1 ? "" : "s"} ${status.toLowerCase()}`);
+            setSelected((prev) => {
+              const next = new Set(prev);
+              ids.forEach((id) => next.delete(id));
+              return next;
+            });
+          };
 
           return (
             <div className="space-y-6">
-              {sections.map((s) => (
-                <div key={s.title}>
-                  <div className="mb-2 flex items-baseline gap-2">
-                    <h3 className="text-sm font-semibold">{s.title}</h3>
-                    <span className="text-xs text-muted-foreground">{s.items.length}</span>
+              {sections.map((s) => {
+                const sectionSelected = s.items.filter((l) => selected.has(l.id)).map((l) => l.id);
+                return (
+                  <div key={s.title} className="rounded-lg border bg-muted/10 p-4">
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-semibold ${s.tone}`}>
+                          {s.title}
+                        </span>
+                        <span className="text-xs text-muted-foreground">{s.items.length} {s.items.length === 1 ? "lead" : "leads"}</span>
+                      </div>
+                      {sectionSelected.length > 0 && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground">{sectionSelected.length} selected</span>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
+                            onClick={() => bulkSetIds(sectionSelected, "Approved")}
+                          >
+                            Approve selected
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => bulkSetIds(sectionSelected, "Skipped")}>
+                            Skip selected
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                    {renderTable(s.items)}
                   </div>
-                  {renderTable(s.items)}
-                </div>
-              ))}
+                );
+              })}
             </div>
           );
         })()}
