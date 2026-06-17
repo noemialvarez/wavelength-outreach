@@ -1142,6 +1142,7 @@ function LeadDiscoveryPage() {
                     return next;
                   });
                 };
+                const isCollapsed = collapsedSections.has(s.title);
                 return (
                   <div key={s.title} className="rounded-lg border bg-muted/10 p-4">
                     <div className="mb-3 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
@@ -1150,40 +1151,57 @@ function LeadDiscoveryPage() {
                           {s.title}
                         </span>
                         <span className="text-xs text-muted-foreground">{s.items.length} {s.items.length === 1 ? "lead" : "leads"}</span>
+                        <button
+                          type="button"
+                          onClick={() => toggleSection(s.title)}
+                          className="inline-flex items-center gap-0.5 text-xs font-medium text-brand-blue hover:underline"
+                        >
+                          {isCollapsed ? (
+                            <>
+                              <ChevronDown className="h-3 w-3" /> Show
+                            </>
+                          ) : (
+                            <>
+                              <ChevronUp className="h-3 w-3" /> Hide
+                            </>
+                          )}
+                        </button>
                       </div>
-                      <div className="flex flex-wrap items-center justify-end gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
-                          onClick={toggleAllSection}
-                        >
-                          {allSectionSelected ? "Clear all" : "Select all"}
-                        </Button>
-                        <span className="text-xs text-muted-foreground">
-                          {sectionSelected.length} selected
-                        </span>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
-                          disabled={sectionSelected.length === 0}
-                          onClick={() => bulkSetIds(sectionSelected, "Approved")}
-                        >
-                          Approve selected
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
-                          disabled={sectionSelected.length === 0}
-                          onClick={() => bulkSetIds(sectionSelected, "Skipped")}
-                        >
-                          Skip selected
-                        </Button>
-                      </div>
+                      {!isCollapsed && (
+                        <div className="flex flex-wrap items-center justify-end gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
+                            onClick={toggleAllSection}
+                          >
+                            {allSectionSelected ? "Clear all" : "Select all"}
+                          </Button>
+                          <span className="text-xs text-muted-foreground">
+                            {sectionSelected.length} selected
+                          </span>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
+                            disabled={sectionSelected.length === 0}
+                            onClick={() => bulkSetIds(sectionSelected, "Approved")}
+                          >
+                            Approve selected
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
+                            disabled={sectionSelected.length === 0}
+                            onClick={() => bulkSetIds(sectionSelected, "Skipped")}
+                          >
+                            Skip selected
+                          </Button>
+                        </div>
+                      )}
                     </div>
-                    {renderTable(s.items)}
+                    {!isCollapsed && renderTable(s.items)}
                   </div>
                 );
               })}
