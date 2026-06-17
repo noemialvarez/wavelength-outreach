@@ -226,8 +226,13 @@ function LeadDiscoveryPage() {
         })
         .then((r) => {
           const d = r.data;
-          const list: DescriptionMatch[] = Array.isArray(d) ? d : (d?.data ?? d?.results ?? []);
-          return list;
+          const raw: Array<Record<string, string>> = Array.isArray(d) ? d : (d?.data ?? d?.results ?? []);
+          return raw.map((item) => ({
+            ...item,
+            // Claude returns company_name; normalise to company for consistent use
+            company: item.company || item.company_name || "",
+            whyMatches: item.whyMatches || item.why_match || item.why_it_matches || "",
+          })) as DescriptionMatch[];
         }),
     onSuccess: (data) => {
       setDescResults(data);
@@ -529,12 +534,16 @@ function LeadDiscoveryPage() {
                 const key = m.id ?? `${m.company_name ?? m.company ?? "unknown"}-${i}`;
                 const why = m.whyMatches ?? m.why_it_matches;
                 const site = m.website ?? m.url;
-                const approved = approvedMatches.has(m.id ?? m.company_name ?? m.company ?? "");
+                const cardKey = m.id ?? m.company_name ?? m.company ?? "";
+                const approved = approvedMatches.has(cardKey);
+                const isApprovingThis =
+                  approveMatchMutation.isPending &&
+                  (approveMatchMutation.variables?.id ?? approveMatchMutation.variables?.company_name ?? approveMatchMutation.variables?.company) === cardKey;
                 return (
                   <div key={key} className="rounded-md border bg-card p-4 space-y-2">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <div className="font-bold">{m.company}</div>
+                        <div className="font-bold">{m.company_name ?? m.company}</div>
                         {site && (
                           <a
                             href={site.startsWith("http") ? site : `https://${site}`}
@@ -548,12 +557,14 @@ function LeadDiscoveryPage() {
                       </div>
                       <Button
                         size="sm"
-                        disabled={approved || approveMatchMutation.isPending}
+                        disabled={approved || isApprovingThis}
                         onClick={() => approveMatchMutation.mutate(m)}
                         style={{ backgroundColor: "#E31B84", color: "white" }}
                         className="hover:opacity-90"
                       >
-                        {approved ? "Approved" : "Approve as lead"}
+                        {isApprovingThis ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : approved ? "Approved" : "Approve as lead"}
                       </Button>
                     </div>
                     {(m.industry || m.geography) && (
