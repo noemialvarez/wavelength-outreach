@@ -128,7 +128,10 @@ function LeadDiscoveryPage() {
   const leads = leadsData ?? [];
 
   const approveMutation = useMutation({
-    mutationFn: (id: string) => api.post(`/api/discovery/signals/${id}/promote`),
+    mutationFn: (id: string) =>
+      // Pass Option 1 ICP titles so backend's founder search ranks them
+      // by seniority instead of using the hardcoded "founder" keyword.
+      api.post(`/api/discovery/signals/${id}/promote`, { titles: icp.titles }),
     onSuccess: () => {
       toast.success("Lead created from signal");
       queryClient.invalidateQueries({ queryKey: ["signals"] });
@@ -257,6 +260,12 @@ function LeadDiscoveryPage() {
   const approveMatchMutation = useMutation({
     mutationFn: (m: DescriptionMatch) => {
       console.log("[approveMatch] match object:", m);
+      // Use Option 2's own jobTitles field; fall back to Option 1's ICP titles
+      // so founder search can rank by seniority.
+      const titles = descQuery.jobTitles
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean);
       const payload = {
         name: m.company_name || m.company || m.name || "",
         company: m.company_name || m.company || m.name || "",
@@ -264,6 +273,7 @@ function LeadDiscoveryPage() {
         notes: m.description || m.why_match || m.whyMatches || m.why_it_matches || "",
         source: "company_description",
         status: "Approved",
+        titles: titles.length ? titles : icp.titles,
       };
       console.log("[approveMatch] payload:", payload);
       return api.post("/api/leads", payload);
@@ -355,6 +365,8 @@ function LeadDiscoveryPage() {
         notes: m.description || m.whyMatches || "",
         source: "icp_filters",
         status: "Approved",
+        // Backend ranks these by seniority and stops at the first hit.
+        titles: icp.titles,
       };
       return api.post("/api/leads", payload);
     },
