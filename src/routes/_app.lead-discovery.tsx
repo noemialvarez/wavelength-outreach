@@ -1122,6 +1122,7 @@ function LeadDiscoveryPage() {
           type LeadRow = {
             id: string; company: string; notes?: string; signalType?: SignalType;
             name: string; email?: string; linkedin_url?: string; status: LeadStatus; created_at: string;
+            role?: string;
             enrichment_data?: { email_source?: string }; source?: string;
           };
           const rows = filtered as LeadRow[];
@@ -1166,7 +1167,12 @@ function LeadDiscoveryPage() {
                           <StatusBadge label={l.signalType} tone={signalTones[l.signalType] ?? "muted"} />
                         )}
                       </TableCell>
-                      <TableCell>{l.name}</TableCell>
+                      <TableCell>
+                        <div className="font-medium">{l.name}</div>
+                        {l.role && (
+                          <div className="text-xs text-muted-foreground">{l.role}</div>
+                        )}
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
                           <Input
