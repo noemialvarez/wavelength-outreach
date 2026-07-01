@@ -104,6 +104,7 @@ function LeadDiscoveryPage() {
   const [approvedMatches, setApprovedMatches] = useState<Set<string>>(new Set());
   const [icpResults, setIcpResults] = useState<DescriptionMatch[]>([]);
   const [approvedIcpMatches, setApprovedIcpMatches] = useState<Set<string>>(new Set());
+  const [batchLookupIds, setBatchLookupIds] = useState<Set<string>>(new Set());
 
 
   const queryClient = useQueryClient();
@@ -415,6 +416,38 @@ function LeadDiscoveryPage() {
     selected.forEach((id) => updateStatusMutation.mutate({ id, status }));
     toast.success(`${selected.size} lead${selected.size === 1 ? "" : "s"} ${status.toLowerCase()}`);
     setSelected(new Set());
+  };
+
+  // Runs one lead at a time (founder + email lookups in parallel per lead) so we
+  // don't fan out a burst of concurrent PhantomBuster/Apollo calls across the batch.
+  const runBatchLookup = async (ids: string[]) => {
+    if (ids.length === 0 || batchLookupIds.size > 0) return;
+    setBatchLookupIds(new Set(ids));
+    let foundersFound = 0;
+    let emailsFound = 0;
+    let errors = 0;
+
+    for (const id of ids) {
+      const [founderResult, emailResult] = await Promise.allSettled([
+        api.post(`/api/leads/${id}/find-founder`).then((r) => r.data as { found?: boolean }),
+        api.post(`/api/leads/${id}/find-email`).then((r) => r.data as { email?: string | null }),
+      ]);
+      if (founderResult.status === "fulfilled" && founderResult.value.found) foundersFound++;
+      if (emailResult.status === "fulfilled" && emailResult.value.email) emailsFound++;
+      if (founderResult.status === "rejected" && emailResult.status === "rejected") errors++;
+      setBatchLookupIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
+
+    queryClient.invalidateQueries({ queryKey: ["leads"] });
+    toast.success(
+      `Batch lookup complete: ${foundersFound} founder${foundersFound === 1 ? "" : "s"} found, ${emailsFound} email${emailsFound === 1 ? "" : "s"} found${
+        errors ? `, ${errors} lead${errors === 1 ? "" : "s"} failed` : ""
+      }`,
+    );
   };
 
   const toggleSection = (title: string) => {
@@ -1180,9 +1213,9 @@ function LeadDiscoveryPage() {
                             className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
                             title="Look up email via Apollo"
                             onClick={() => findEmailMutation.mutate(l.id)}
-                            disabled={findEmailMutation.isPending && findEmailMutation.variables === l.id}
+                            disabled={(findEmailMutation.isPending && findEmailMutation.variables === l.id) || batchLookupIds.has(l.id)}
                           >
-                            {findEmailMutation.isPending && findEmailMutation.variables === l.id ? (
+                            {(findEmailMutation.isPending && findEmailMutation.variables === l.id) || batchLookupIds.has(l.id) ? (
                               <Loader2 className="h-3.5 w-3.5 animate-spin" />
                             ) : (
                               <Search className="h-3.5 w-3.5" />
@@ -1215,9 +1248,9 @@ function LeadDiscoveryPage() {
                             variant="outline"
                             title="Find founder via LinkedIn"
                             onClick={() => findFounderMutation.mutate(l.id)}
-                            disabled={findFounderMutation.isPending && findFounderMutation.variables === l.id}
+                            disabled={(findFounderMutation.isPending && findFounderMutation.variables === l.id) || batchLookupIds.has(l.id)}
                           >
-                            {findFounderMutation.isPending && findFounderMutation.variables === l.id ? (
+                            {(findFounderMutation.isPending && findFounderMutation.variables === l.id) || batchLookupIds.has(l.id) ? (
                               <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
                             ) : (
                               <UserSearch className="mr-1.5 h-3.5 w-3.5" />
@@ -1336,6 +1369,25 @@ function LeadDiscoveryPage() {
                           <span className="text-xs text-muted-foreground">
                             {sectionSelected.length} selected
                           </span>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-brand-blue/40 text-brand-blue hover:bg-brand-blue/10"
+                            disabled={sectionSelected.length === 0 || batchLookupIds.size > 0}
+                            onClick={() => runBatchLookup(sectionSelected)}
+                          >
+                            {batchLookupIds.size > 0 ? (
+                              <>
+                                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                                Looking up… ({batchLookupIds.size} left)
+                              </>
+                            ) : (
+                              <>
+                                <UserSearch className="mr-1.5 h-3.5 w-3.5" />
+                                Find founders & emails
+                              </>
+                            )}
+                          </Button>
                           <Button
                             size="sm"
                             variant="outline"
