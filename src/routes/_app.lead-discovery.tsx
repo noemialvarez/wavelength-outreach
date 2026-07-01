@@ -293,58 +293,22 @@ function LeadDiscoveryPage() {
     whyMatches: item.whyMatches || item.why_match || item.why_it_matches || "",
   });
 
-  const buildMockIcpMatches = (): DescriptionMatch[] => {
-    const industry = icp.industries[0] ?? "SaaS";
-    const geo = icp.geography || "Switzerland";
-    const size = icp.companySizes[0] ?? "11-50";
-    const title = icp.titles[0] ?? "CEO";
-    const baseNames =
-      icp.companyNames.length > 0
-        ? icp.companyNames
-        : [
-            "Nordlys AI",
-            "Helvetia Robotics",
-            "Alpine Data Co",
-            "Lumen Health",
-            "Cervino Logistics",
-            "Matterhorn Fintech",
-          ];
-    return baseNames.slice(0, 6).map((name, i) => ({
-      id: `icp-${i}-${name}`,
-      company_name: name,
-      company: name,
-      website: `${name.toLowerCase().replace(/[^a-z0-9]+/g, "")}.com`,
-      industry,
-      geography: geo,
-      description: `${name} is a ${size}-person ${industry} company based in ${geo}.`,
-      whyMatches: `Matches ICP: ${industry}, ${geo}, ${size} employees${
-        title ? `, hiring for ${title}` : ""
-      }.`,
-    }));
-  };
-
   const icpSearchMutation = useMutation({
     mutationFn: async () => {
-      try {
-        const r = await api.post("/api/discovery/by-icp", {
-          companyNames: icp.companyNames,
-          jobTitles: icp.titles,
-          industries: icp.industries,
-          companySizes: icp.companySizes,
-          geography: icp.geography,
-        }, { timeout: 8000 });
-        const d = r.data;
-        const raw: Array<Record<string, string>> = Array.isArray(d)
-          ? d
-          : (d?.data ?? d?.results ?? []);
-        if (raw.length) return raw.map(normalizeMatch);
-      } catch {
-        // backend unavailable — fall through to mock
-      }
-      return buildMockIcpMatches();
+      const r = await api.post("/api/discovery/by-icp", {
+        companyNames: icp.companyNames,
+        jobTitles: icp.titles,
+        industries: icp.industries,
+        companySizes: icp.companySizes,
+        geography: icp.geography,
+      }, { timeout: 8000 });
+      const d = r.data;
+      const raw: Array<Record<string, string>> = Array.isArray(d)
+        ? d
+        : (d?.data ?? d?.results ?? []);
+      return raw.map(normalizeMatch);
     },
     onMutate: () => {
-      setIcpResults(buildMockIcpMatches());
       setApprovedIcpMatches(new Set());
     },
     onSuccess: (data) => {
@@ -353,7 +317,18 @@ function LeadDiscoveryPage() {
       if (!data.length) toast.info("No matching companies found");
       else toast.success(`${data.length} matching companies found`);
     },
-    onError: () => toast.error("ICP search failed"),
+    onError: (err: unknown) => {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      const serverMsg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      const msg =
+        serverMsg ??
+        (status === 402
+          ? "ICP search failed — enrichment credits exhausted (402 Payment Required)"
+          : status === 404
+          ? "ICP search failed — backend endpoint not found (404)"
+          : "ICP search failed — check backend connection");
+      toast.error(msg);
+    },
   });
 
   const approveIcpMutation = useMutation({
