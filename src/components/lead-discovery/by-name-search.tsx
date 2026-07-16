@@ -25,9 +25,6 @@ type NameCandidate = {
   purpose: string;
   title?: string;
   linkedin_url?: string;
-  // The LinkedIn search URL that surfaced this candidate — the backend's
-  // connect step reuses it verbatim so it targets the same person shown here.
-  search_url?: string;
 };
 
 export function ByNameSearch() {
@@ -61,7 +58,6 @@ export function ByNameSearch() {
             purpose: form.purpose,
             title: item.title ?? item.headline,
             linkedin_url: item.linkedin_url ?? item.url,
-            search_url: item.search_url,
           })) as NameCandidate[];
         }),
     onSuccess: (data) => {
@@ -107,20 +103,17 @@ export function ByNameSearch() {
     setSelected(new Set());
   };
 
-  // Phantombuster's connect agent is a paced Workflow, not an instant sender —
-  // this adds the person to its invite queue; actual sending happens on the
-  // agent's own recurring schedule (throttled to LinkedIn's safe limits).
-  const queueConnectionRequests = async (ids: string[]) => {
+  const sendConnectionRequests = async (ids: string[]) => {
     if (ids.length === 0 || connectingIds.size > 0) return;
     setConnectingIds(new Set(ids));
-    let queued = 0;
+    let sent = 0;
     let failed = 0;
     for (const id of ids) {
       const candidate = results.find((r) => r.id === id);
       if (!candidate) continue;
       try {
         await connectMutation.mutateAsync(candidate);
-        queued++;
+        sent++;
       } catch {
         failed++;
       }
@@ -134,7 +127,7 @@ export function ByNameSearch() {
     setResults((prev) => prev.filter((r) => !ids.includes(r.id)));
     setSelected(new Set());
     toast.success(
-      `${queued} connection request${queued === 1 ? "" : "s"} queued${failed ? `, ${failed} failed` : ""}`,
+      `${sent} connection request${sent === 1 ? "" : "s"} sent${failed ? `, ${failed} failed` : ""}`,
     );
   };
 
@@ -146,8 +139,7 @@ export function ByNameSearch() {
         </div>
         <h2 className="text-base font-semibold">By name</h2>
         <p className="text-xs text-muted-foreground">
-          Search for a specific person on LinkedIn and queue a connection request — Phantombuster
-          sends it on its own paced schedule, not instantly.
+          Search for a specific person on LinkedIn and send a connection request.
         </p>
       </div>
       <div className="grid grid-cols-2 gap-4">
@@ -233,17 +225,17 @@ export function ByNameSearch() {
               size="sm"
               className="ml-auto"
               disabled={selected.size === 0 || connectingIds.size > 0}
-              onClick={() => queueConnectionRequests(Array.from(selected))}
+              onClick={() => sendConnectionRequests(Array.from(selected))}
             >
               {connectingIds.size > 0 ? (
                 <>
                   <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                  Queuing… ({connectingIds.size} left)
+                  Sending… ({connectingIds.size} left)
                 </>
               ) : (
                 <>
                   <Send className="mr-1.5 h-3.5 w-3.5" />
-                  Queue connection request{selected.size === 1 ? "" : "s"}
+                  Send connection request{selected.size === 1 ? "" : "s"}
                 </>
               )}
             </Button>
@@ -298,12 +290,12 @@ export function ByNameSearch() {
                         variant="outline"
                         className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
                         disabled={connectingIds.size > 0}
-                        onClick={() => queueConnectionRequests([r.id])}
+                        onClick={() => sendConnectionRequests([r.id])}
                       >
                         {connectingIds.has(r.id) ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
                         ) : (
-                          "Queue connection request"
+                          "Send connection request"
                         )}
                       </Button>
                     </TableCell>
