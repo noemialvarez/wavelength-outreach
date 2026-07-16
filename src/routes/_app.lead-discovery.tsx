@@ -1411,6 +1411,29 @@ function LeadDiscoveryPage() {
               });
             };
 
+            const bulkDeleteIds = async (ids: string[]) => {
+              if (ids.length === 0) return;
+              if (
+                !confirm(
+                  `Delete ${ids.length} lead${ids.length === 1 ? "" : "s"}? This can't be undone.`,
+                )
+              ) {
+                return;
+              }
+              const results = await Promise.allSettled(
+                ids.map((id) => deleteLeadMutation.mutateAsync(id)),
+              );
+              const succeeded = results.filter((r) => r.status === "fulfilled").length;
+              if (succeeded) {
+                toast.success(`${succeeded} lead${succeeded === 1 ? "" : "s"} deleted`);
+              }
+              setSelected((prev) => {
+                const next = new Set(prev);
+                ids.forEach((id) => next.delete(id));
+                return next;
+              });
+            };
+
             return (
               <div className="space-y-6">
                 {sections.map((s) => {
@@ -1504,6 +1527,16 @@ function LeadDiscoveryPage() {
                               onClick={() => bulkSetIds(sectionSelected, "Skipped")}
                             >
                               Skip selected
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-muted-foreground hover:text-destructive"
+                              disabled={sectionSelected.length === 0}
+                              onClick={() => bulkDeleteIds(sectionSelected)}
+                            >
+                              <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                              Delete selected
                             </Button>
                           </div>
                         )}
