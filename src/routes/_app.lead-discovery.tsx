@@ -47,6 +47,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { store, useStore, uid, type SignalType, type LeadStatus } from "@/lib/store";
 import api from "@/lib/api";
 import { ByNameSearch } from "@/components/lead-discovery/by-name-search";
+import { LinkedinPendingConnections } from "@/components/lead-discovery/linkedin-pending-connections";
 import { CollapsibleSection } from "@/components/lead-discovery/collapsible-section";
 
 export const Route = createFileRoute("/_app/lead-discovery")({
@@ -1541,6 +1542,14 @@ function LeadDiscoveryPage() {
             );
           })()
         )}
+      </CollapsibleSection>
+
+      {/* Under Leads Results — pending connection requests across all leads */}
+      <CollapsibleSection
+        title="LinkedIn connection requests not accepted"
+        description="People a connection request was sent to who haven't accepted yet."
+      >
+        <LinkedinPendingConnections />
       </CollapsibleSection>
 
       <div className="flex justify-end pt-2">

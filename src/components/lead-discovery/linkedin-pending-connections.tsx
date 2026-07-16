@@ -19,8 +19,8 @@ type PendingConnection = {
   linkedin_connection_requested_at?: string;
 };
 
-// Plain content block, not its own collapsible — composed inside ByNameSearch's
-// single Option 4 box alongside the rest of the LinkedIn outreach funnel.
+// Plain content block — its title/description/badge live on the
+// CollapsibleSection wrapper that renders it (under Leads Results).
 export function LinkedinPendingConnections() {
   const { data: leads = [], isLoading } = useQuery<PendingConnection[]>({
     queryKey: ["leads", "linkedin-pending"],
@@ -32,16 +32,6 @@ export function LinkedinPendingConnections() {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <h3 className="text-sm font-semibold">LinkedIn connection requests not accepted</h3>
-        {leads.length > 0 && (
-          <span className="text-xs font-normal text-muted-foreground">{leads.length}</span>
-        )}
-      </div>
-      <p className="text-xs text-muted-foreground">
-        People a connection request was sent to who haven&apos;t accepted yet.
-      </p>
-
       {isLoading ? (
         <p className="py-6 text-center text-sm text-muted-foreground">Loading…</p>
       ) : leads.length === 0 ? (
