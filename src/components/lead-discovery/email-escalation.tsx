@@ -14,7 +14,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { EmptyState } from "@/components/empty-state";
-import { CollapsibleSection } from "@/components/lead-discovery/collapsible-section";
 import api from "@/lib/api";
 
 type EscalationLead = {
@@ -114,10 +113,14 @@ export function EmailEscalation() {
   const draftFor = (leadId: string) => drafts.find((d) => d.lead_id === leadId);
 
   return (
-    <CollapsibleSection
-      title="Still no reply — escalate to email"
-      description="Reminder sent with no response — find an email via Apollo and draft an outreach email."
-    >
+    <div className="space-y-3">
+      <div>
+        <h3 className="text-sm font-semibold">Still no reply — escalate to email</h3>
+        <p className="text-xs text-muted-foreground">
+          Reminder sent with no response — find an email via Apollo and draft an outreach email.
+        </p>
+      </div>
+
       {isLoading ? (
         <p className="py-8 text-center text-sm text-muted-foreground">Loading…</p>
       ) : leads.length === 0 ? (
@@ -242,6 +245,6 @@ export function EmailEscalation() {
           )}
         </div>
       )}
-    </CollapsibleSection>
+    </div>
   );
 }

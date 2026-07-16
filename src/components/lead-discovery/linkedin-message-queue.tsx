@@ -5,7 +5,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { EmptyState } from "@/components/empty-state";
-import { CollapsibleSection } from "@/components/lead-discovery/collapsible-section";
 import api from "@/lib/api";
 
 type ReadyLead = {
@@ -66,15 +65,17 @@ export function LinkedinMessageQueue() {
   const getBody = (l: ReadyLead) => localDrafts[l.id] ?? l.linkedin_message_draft ?? "";
 
   return (
-    <CollapsibleSection
-      title="LinkedIn message queue"
-      description="Connections accepted 4h+ ago — draft a personalized message and send it on LinkedIn."
-      badge={
-        leads.length > 0 && (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <h3 className="text-sm font-semibold">LinkedIn message queue</h3>
+        {leads.length > 0 && (
           <span className="text-xs font-normal text-muted-foreground">{leads.length} ready</span>
-        )
-      }
-    >
+        )}
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Connections accepted 4h+ ago — draft a personalized message and send it on LinkedIn.
+      </p>
+
       {isLoading ? (
         <p className="py-8 text-center text-sm text-muted-foreground">Loading…</p>
       ) : leads.length === 0 ? (
@@ -145,6 +146,6 @@ export function LinkedinMessageQueue() {
           ))}
         </div>
       )}
-    </CollapsibleSection>
+    </div>
   );
 }

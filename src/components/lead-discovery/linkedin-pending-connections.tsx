@@ -8,7 +8,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { EmptyState } from "@/components/empty-state";
-import { CollapsibleSection } from "@/components/lead-discovery/collapsible-section";
 import { UserX } from "lucide-react";
 import api from "@/lib/api";
 
@@ -20,6 +19,8 @@ type PendingConnection = {
   linkedin_connection_requested_at?: string;
 };
 
+// Plain content block, not its own collapsible — composed inside ByNameSearch's
+// single Option 4 box alongside the rest of the LinkedIn outreach funnel.
 export function LinkedinPendingConnections() {
   const { data: leads = [], isLoading } = useQuery<PendingConnection[]>({
     queryKey: ["leads", "linkedin-pending"],
@@ -30,17 +31,19 @@ export function LinkedinPendingConnections() {
   });
 
   return (
-    <CollapsibleSection
-      title="LinkedIn connection requests not accepted"
-      badge={
-        leads.length > 0 && (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <h3 className="text-sm font-semibold">LinkedIn connection requests not accepted</h3>
+        {leads.length > 0 && (
           <span className="text-xs font-normal text-muted-foreground">{leads.length}</span>
-        )
-      }
-      description="People a connection request was sent to who haven't accepted yet."
-    >
+        )}
+      </div>
+      <p className="text-xs text-muted-foreground">
+        People a connection request was sent to who haven&apos;t accepted yet.
+      </p>
+
       {isLoading ? (
-        <p className="py-8 text-center text-sm text-muted-foreground">Loading…</p>
+        <p className="py-6 text-center text-sm text-muted-foreground">Loading…</p>
       ) : leads.length === 0 ? (
         <EmptyState icon={UserX} message="No pending connection requests." />
       ) : (
@@ -80,6 +83,6 @@ export function LinkedinPendingConnections() {
           </Table>
         </div>
       )}
-    </CollapsibleSection>
+    </div>
   );
 }

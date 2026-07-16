@@ -47,10 +47,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { store, useStore, uid, type SignalType, type LeadStatus } from "@/lib/store";
 import api from "@/lib/api";
 import { ByNameSearch } from "@/components/lead-discovery/by-name-search";
-import { LinkedinMessageQueue } from "@/components/lead-discovery/linkedin-message-queue";
-import { LinkedinReminders } from "@/components/lead-discovery/linkedin-reminders";
-import { EmailEscalation } from "@/components/lead-discovery/email-escalation";
-import { LinkedinPendingConnections } from "@/components/lead-discovery/linkedin-pending-connections";
 import { CollapsibleSection } from "@/components/lead-discovery/collapsible-section";
 
 export const Route = createFileRoute("/_app/lead-discovery")({
@@ -957,171 +953,171 @@ function LeadDiscoveryPage() {
             </button>
           )}
         </div>
-      </CollapsibleSection>
 
-      {/* Scan results — always visible */}
-      <Card className="p-6">
-        <div className="mb-3 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
-          <div className="flex min-w-0 items-center gap-2">
-            <Zap className="h-4 w-4 shrink-0 text-brand-turquoise" />
-            <h3 className="truncate text-sm font-semibold">Signal scan results</h3>
-            {newSignals.length > 0 && (
-              <span className="shrink-0 rounded-full bg-brand-turquoise/15 px-2 py-0.5 text-xs font-medium text-brand-turquoise">
-                {newSignals.length} new
-              </span>
+        {/* Scan results — same box, same fold, as the sources form above */}
+        <div className="mt-6 border-t pt-4">
+          <div className="mb-3 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+            <div className="flex min-w-0 items-center gap-2">
+              <Zap className="h-4 w-4 shrink-0 text-brand-turquoise" />
+              <h3 className="truncate text-sm font-semibold">Signal scan results</h3>
+              {newSignals.length > 0 && (
+                <span className="shrink-0 rounded-full bg-brand-turquoise/15 px-2 py-0.5 text-xs font-medium text-brand-turquoise">
+                  {newSignals.length} new
+                </span>
+              )}
+            </div>
+            {newSignals.length > 5 && (
+              <button
+                type="button"
+                onClick={() => setShowAllSignals((v) => !v)}
+                className="text-sm font-medium text-brand-blue hover:underline"
+              >
+                {showAllSignals ? "Hide signals" : `Show all signals (${newSignals.length})`}
+              </button>
             )}
           </div>
-          {newSignals.length > 5 && (
-            <button
-              type="button"
-              onClick={() => setShowAllSignals((v) => !v)}
-              className="text-sm font-medium text-brand-blue hover:underline"
-            >
-              {showAllSignals ? "Hide signals" : `Show all signals (${newSignals.length})`}
-            </button>
+
+          {signalsLoading ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">Loading signals…</p>
+          ) : newSignals.length === 0 ? (
+            <EmptyState icon={Zap} message="No new signals. Run a scan to pull fresh results." />
+          ) : (
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/20 p-3">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
+                  onClick={toggleAllSignals}
+                >
+                  {allSignalsSelected ? "Clear all" : "Select all"}
+                </Button>
+                <span className="text-xs text-muted-foreground">
+                  {selectedSignalIds.length} selected
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
+                  disabled={selectedSignalIds.length === 0}
+                  onClick={() => bulkSetSignals(selectedSignalIds, "approve")}
+                >
+                  Approve selected
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
+                  disabled={selectedSignalIds.length === 0}
+                  onClick={() => bulkSetSignals(selectedSignalIds, "skip")}
+                >
+                  Skip selected
+                </Button>
+              </div>
+              <div className="overflow-hidden rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-10"></TableHead>
+                      <TableHead>Company</TableHead>
+                      <TableHead>Signal</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Source</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {visibleSignals.map((sig) => {
+                      const signalType = sig.raw_data?.signal_type;
+                      const signalDesc = sig.raw_data?.signal_description;
+                      const isApproving =
+                        approveMutation.isPending && approveMutation.variables === sig.id;
+                      const isDismissing =
+                        dismissMutation.isPending && dismissMutation.variables === sig.id;
+                      return (
+                        <TableRow key={sig.id}>
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedSignals.has(sig.id)}
+                              onCheckedChange={() => toggleSignalSelect(sig.id)}
+                            />
+                          </TableCell>
+                          <TableCell className="font-medium">{sig.company_name ?? "—"}</TableCell>
+                          <TableCell className="max-w-sm text-sm text-muted-foreground">
+                            {sig.signal_url ? (
+                              <a
+                                href={sig.signal_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="hover:underline"
+                              >
+                                {signalDesc ?? sig.signal_url}
+                              </a>
+                            ) : (
+                              (signalDesc ?? "—")
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {signalType && (
+                              <StatusBadge
+                                label={signalType}
+                                tone={signalTones[signalType] ?? "muted"}
+                              />
+                            )}
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {sig.source}
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {sig.created_at?.slice(0, 10)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-1.5">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
+                                onClick={() => approveMutation.mutate(sig.id)}
+                                disabled={isApproving || isDismissing}
+                              >
+                                {isApproving ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  "Approve"
+                                )}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => dismissMutation.mutate(sig.id)}
+                                disabled={isApproving || isDismissing}
+                              >
+                                {isDismissing ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  "Skip"
+                                )}
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
           )}
         </div>
-
-        {signalsLoading ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">Loading signals…</p>
-        ) : newSignals.length === 0 ? (
-          <EmptyState icon={Zap} message="No new signals. Run a scan to pull fresh results." />
-        ) : (
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/20 p-3">
-              <Button
-                size="sm"
-                variant="outline"
-                className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
-                onClick={toggleAllSignals}
-              >
-                {allSignalsSelected ? "Clear all" : "Select all"}
-              </Button>
-              <span className="text-xs text-muted-foreground">
-                {selectedSignalIds.length} selected
-              </span>
-              <Button
-                size="sm"
-                variant="outline"
-                className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
-                disabled={selectedSignalIds.length === 0}
-                onClick={() => bulkSetSignals(selectedSignalIds, "approve")}
-              >
-                Approve selected
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
-                disabled={selectedSignalIds.length === 0}
-                onClick={() => bulkSetSignals(selectedSignalIds, "skip")}
-              >
-                Skip selected
-              </Button>
-            </div>
-            <div className="overflow-hidden rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-10"></TableHead>
-                    <TableHead>Company</TableHead>
-                    <TableHead>Signal</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Source</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {visibleSignals.map((sig) => {
-                    const signalType = sig.raw_data?.signal_type;
-                    const signalDesc = sig.raw_data?.signal_description;
-                    const isApproving =
-                      approveMutation.isPending && approveMutation.variables === sig.id;
-                    const isDismissing =
-                      dismissMutation.isPending && dismissMutation.variables === sig.id;
-                    return (
-                      <TableRow key={sig.id}>
-                        <TableCell>
-                          <Checkbox
-                            checked={selectedSignals.has(sig.id)}
-                            onCheckedChange={() => toggleSignalSelect(sig.id)}
-                          />
-                        </TableCell>
-                        <TableCell className="font-medium">{sig.company_name ?? "—"}</TableCell>
-                        <TableCell className="max-w-sm text-sm text-muted-foreground">
-                          {sig.signal_url ? (
-                            <a
-                              href={sig.signal_url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="hover:underline"
-                            >
-                              {signalDesc ?? sig.signal_url}
-                            </a>
-                          ) : (
-                            (signalDesc ?? "—")
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {signalType && (
-                            <StatusBadge
-                              label={signalType}
-                              tone={signalTones[signalType] ?? "muted"}
-                            />
-                          )}
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {sig.source}
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {sig.created_at?.slice(0, 10)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-1.5">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
-                              onClick={() => approveMutation.mutate(sig.id)}
-                              disabled={isApproving || isDismissing}
-                            >
-                              {isApproving ? (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              ) : (
-                                "Approve"
-                              )}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => dismissMutation.mutate(sig.id)}
-                              disabled={isApproving || isDismissing}
-                            >
-                              {isDismissing ? (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              ) : (
-                                "Skip"
-                              )}
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
-        )}
-      </Card>
+      </CollapsibleSection>
 
       {/* Option 4 — By name */}
       <ByNameSearch />
 
       {/* Leads table */}
       <CollapsibleSection
-        title="Leads"
+        title="Leads Results"
         badge={
           <span className="text-xs font-normal text-muted-foreground">
             {filtered.length} of {leads.length} leads
@@ -1188,7 +1184,8 @@ function LeadDiscoveryPage() {
             const rows = filtered as LeadRow[];
             const icpLeads = rows.filter((l) => l.source === "icp_filters");
             const descLeads = rows.filter((l) => l.source === "company_description");
-            const nameLeads = rows.filter((l) => l.source === "by_name");
+            // by_name leads are excluded here — they're shown by the
+            // standalone Leads-from-Name-Search list inside Option 4 instead.
             const signalLeads = rows.filter(
               (l) =>
                 l.source !== "icp_filters" &&
@@ -1196,12 +1193,7 @@ function LeadDiscoveryPage() {
                 l.source !== "by_name",
             );
 
-            // showFounderActions: hidden for the Name Search section — those
-            // leads already are the target person, so "Find founder" is
-            // irrelevant, and Apollo email lookup there just burns credits
-            // unnecessarily (email is only looked up later, at the email
-            // escalation stage, if LinkedIn outreach goes nowhere).
-            const renderTable = (items: LeadRow[], showFounderActions = true) => (
+            const renderTable = (items: LeadRow[]) => (
               <div className="overflow-hidden rounded-md border">
                 <Table>
                   <TableHeader>
@@ -1269,28 +1261,26 @@ function LeadDiscoveryPage() {
                                 </Tooltip>
                               </TooltipProvider>
                             )}
-                            {showFounderActions && (
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
-                                title="Look up email via Apollo"
-                                onClick={() => findEmailMutation.mutate(l.id)}
-                                disabled={
-                                  (findEmailMutation.isPending &&
-                                    findEmailMutation.variables === l.id) ||
-                                  batchLookupIds.has(l.id)
-                                }
-                              >
-                                {(findEmailMutation.isPending &&
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
+                              title="Look up email via Apollo"
+                              onClick={() => findEmailMutation.mutate(l.id)}
+                              disabled={
+                                (findEmailMutation.isPending &&
                                   findEmailMutation.variables === l.id) ||
-                                batchLookupIds.has(l.id) ? (
-                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                ) : (
-                                  <Search className="h-3.5 w-3.5" />
-                                )}
-                              </Button>
-                            )}
+                                batchLookupIds.has(l.id)
+                              }
+                            >
+                              {(findEmailMutation.isPending &&
+                                findEmailMutation.variables === l.id) ||
+                              batchLookupIds.has(l.id) ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Search className="h-3.5 w-3.5" />
+                              )}
+                            </Button>
                           </div>
                         </TableCell>
                         <TableCell>
@@ -1316,28 +1306,26 @@ function LeadDiscoveryPage() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1.5">
-                            {showFounderActions && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                title="Find founder via LinkedIn"
-                                onClick={() => findFounderMutation.mutate(l.id)}
-                                disabled={
-                                  (findFounderMutation.isPending &&
-                                    findFounderMutation.variables === l.id) ||
-                                  batchLookupIds.has(l.id)
-                                }
-                              >
-                                {(findFounderMutation.isPending &&
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              title="Find founder via LinkedIn"
+                              onClick={() => findFounderMutation.mutate(l.id)}
+                              disabled={
+                                (findFounderMutation.isPending &&
                                   findFounderMutation.variables === l.id) ||
-                                batchLookupIds.has(l.id) ? (
-                                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                                ) : (
-                                  <UserSearch className="mr-1.5 h-3.5 w-3.5" />
-                                )}
-                                Find founder
-                              </Button>
-                            )}
+                                batchLookupIds.has(l.id)
+                              }
+                            >
+                              {(findFounderMutation.isPending &&
+                                findFounderMutation.variables === l.id) ||
+                              batchLookupIds.has(l.id) ? (
+                                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <UserSearch className="mr-1.5 h-3.5 w-3.5" />
+                              )}
+                              Find founder
+                            </Button>
                             <Button
                               size="sm"
                               variant="outline"
@@ -1388,10 +1376,13 @@ function LeadDiscoveryPage() {
             const sectionTone =
               "bg-brand-turquoise/15 text-brand-turquoise border-brand-turquoise/30";
             const sections: Array<{ title: string; tone: string; items: LeadRow[] }> = [
-              { title: "Leads from ICP Filters", tone: sectionTone, items: icpLeads },
-              { title: "Leads from Company Description", tone: sectionTone, items: descLeads },
-              { title: "Leads by News Sources", tone: sectionTone, items: signalLeads },
-              { title: "Leads from Name Search", tone: sectionTone, items: nameLeads },
+              { title: "Option 1: Leads from ICP Filters", tone: sectionTone, items: icpLeads },
+              {
+                title: "Option 2: Leads from Company Description",
+                tone: sectionTone,
+                items: descLeads,
+              },
+              { title: "Option 3: Leads by News Sources", tone: sectionTone, items: signalLeads },
             ].filter((s) => s.items.length > 0);
 
             const bulkSetIds = async (ids: string[], status: LeadStatus) => {
@@ -1451,7 +1442,6 @@ function LeadDiscoveryPage() {
                     });
                   };
                   const isCollapsed = collapsedSections.has(s.title);
-                  const isNameSearchSection = s.title === "Leads from Name Search";
                   return (
                     <div key={s.title} className="rounded-lg border bg-muted/10 p-4">
                       <div className="mb-3 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
@@ -1493,27 +1483,25 @@ function LeadDiscoveryPage() {
                             <span className="text-xs text-muted-foreground">
                               {sectionSelected.length} selected
                             </span>
-                            {!isNameSearchSection && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="border-brand-blue/40 text-brand-blue hover:bg-brand-blue/10"
-                                disabled={sectionSelected.length === 0 || batchLookupIds.size > 0}
-                                onClick={() => runBatchLookup(sectionSelected)}
-                              >
-                                {batchLookupIds.size > 0 ? (
-                                  <>
-                                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                                    Looking up… ({batchLookupIds.size} left)
-                                  </>
-                                ) : (
-                                  <>
-                                    <UserSearch className="mr-1.5 h-3.5 w-3.5" />
-                                    Find founders & emails
-                                  </>
-                                )}
-                              </Button>
-                            )}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-brand-blue/40 text-brand-blue hover:bg-brand-blue/10"
+                              disabled={sectionSelected.length === 0 || batchLookupIds.size > 0}
+                              onClick={() => runBatchLookup(sectionSelected)}
+                            >
+                              {batchLookupIds.size > 0 ? (
+                                <>
+                                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                                  Looking up… ({batchLookupIds.size} left)
+                                </>
+                              ) : (
+                                <>
+                                  <UserSearch className="mr-1.5 h-3.5 w-3.5" />
+                                  Find founders & emails
+                                </>
+                              )}
+                            </Button>
                             <Button
                               size="sm"
                               variant="outline"
@@ -1545,7 +1533,7 @@ function LeadDiscoveryPage() {
                           </div>
                         )}
                       </div>
-                      {!isCollapsed && renderTable(s.items, !isNameSearchSection)}
+                      {!isCollapsed && renderTable(s.items)}
                     </div>
                   );
                 })}
@@ -1554,12 +1542,6 @@ function LeadDiscoveryPage() {
           })()
         )}
       </CollapsibleSection>
-
-      {/* LinkedIn outreach funnel — follows on from Option 4 (by name) */}
-      <LinkedinPendingConnections />
-      <LinkedinMessageQueue />
-      <LinkedinReminders />
-      <EmailEscalation />
 
       <div className="flex justify-end pt-2">
         <Link

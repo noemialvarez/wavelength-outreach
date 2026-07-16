@@ -13,7 +13,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { EmptyState } from "@/components/empty-state";
-import { CollapsibleSection } from "@/components/lead-discovery/collapsible-section";
 import api from "@/lib/api";
 
 type NoReplyLead = {
@@ -78,15 +77,17 @@ export function LinkedinReminders() {
   };
 
   return (
-    <CollapsibleSection
-      title="No reply after 3 days"
-      description="LinkedIn messages sent 3+ days ago with no reply — send a reminder."
-      badge={
-        leads.length > 0 && (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <h3 className="text-sm font-semibold">No reply after 3 days</h3>
+        {leads.length > 0 && (
           <span className="text-xs font-normal text-muted-foreground">{leads.length} pending</span>
-        )
-      }
-    >
+        )}
+      </div>
+      <p className="text-xs text-muted-foreground">
+        LinkedIn messages sent 3+ days ago with no reply — send a reminder.
+      </p>
+
       {isLoading ? (
         <p className="py-8 text-center text-sm text-muted-foreground">Loading…</p>
       ) : leads.length === 0 ? (
@@ -179,6 +180,6 @@ export function LinkedinReminders() {
           </div>
         </div>
       )}
-    </CollapsibleSection>
+    </div>
   );
 }

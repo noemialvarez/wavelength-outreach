@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, Loader2, Send, Trash2 } from "lucide-react";
+import { Search, Loader2, Send, Trash2, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { CollapsibleSection } from "@/components/lead-discovery/collapsible-section";
-import { store, useStore } from "@/lib/store";
+import { NameSearchLeads } from "@/components/lead-discovery/name-search-leads";
+import { LinkedinPendingConnections } from "@/components/lead-discovery/linkedin-pending-connections";
+import { LinkedinMessageQueue } from "@/components/lead-discovery/linkedin-message-queue";
+import { LinkedinReminders } from "@/components/lead-discovery/linkedin-reminders";
+import { EmailEscalation } from "@/components/lead-discovery/email-escalation";
+import { store, useStore, uid } from "@/lib/store";
 import api from "@/lib/api";
 
 type NameCandidate = {
@@ -35,6 +40,15 @@ type NameCandidate = {
   linkedin_url?: string;
 };
 
+type SearchRow = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  purpose: string;
+  company: string;
+  showCustomPurposeInput: boolean;
+};
+
 const PRESET_PURPOSES = [
   "Request expert interview",
   "Apply for a job",
@@ -45,6 +59,15 @@ const OTHER_VALUE = "__other__";
 // would create a new array every call and loop useSyncExternalStore forever.
 const NO_CUSTOM_PURPOSES: string[] = [];
 
+const emptyRow = (): SearchRow => ({
+  id: uid(),
+  firstName: "",
+  lastName: "",
+  purpose: "",
+  company: "",
+  showCustomPurposeInput: false,
+});
+
 export function ByNameSearch() {
   const queryClient = useQueryClient();
   const customPurposes = useStore((s) => s.customContactPurposes ?? NO_CUSTOM_PURPOSES);
@@ -53,24 +76,29 @@ export function ByNameSearch() {
     ...customPurposes.filter((p) => !PRESET_PURPOSES.includes(p)),
   ];
 
-  const [form, setForm] = useState({ firstName: "", lastName: "", purpose: "", company: "" });
-  const [showCustomPurposeInput, setShowCustomPurposeInput] = useState(false);
+  const [rows, setRows] = useState<SearchRow[]>([emptyRow()]);
+  const [isSearching, setIsSearching] = useState(false);
   const [results, setResults] = useState<NameCandidate[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [connectingIds, setConnectingIds] = useState<Set<string>>(new Set());
 
-  const handlePurposeSelect = (value: string) => {
+  const updateRow = (id: string, patch: Partial<SearchRow>) => {
+    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+  };
+
+  const addRow = () => setRows((prev) => [...prev, emptyRow()]);
+  const removeRow = (id: string) => setRows((prev) => prev.filter((r) => r.id !== id));
+
+  const handlePurposeSelect = (rowId: string, value: string) => {
     if (value === OTHER_VALUE) {
-      setShowCustomPurposeInput(true);
-      setForm((f) => ({ ...f, purpose: "" }));
+      updateRow(rowId, { showCustomPurposeInput: true, purpose: "" });
     } else {
-      setShowCustomPurposeInput(false);
-      setForm((f) => ({ ...f, purpose: value }));
+      updateRow(rowId, { showCustomPurposeInput: false, purpose: value });
     }
   };
 
-  const saveCustomPurpose = () => {
-    const value = form.purpose.trim();
+  const saveCustomPurpose = (purpose: string) => {
+    const value = purpose.trim();
     if (!value || purposeOptions.includes(value)) return;
     store.set((s) => ({
       ...s,
@@ -78,52 +106,64 @@ export function ByNameSearch() {
     }));
   };
 
-  const searchMutation = useMutation({
-    mutationFn: () =>
-      api
-        .post("/api/discovery/by-name", {
-          firstName: form.firstName,
-          lastName: form.lastName,
-          company: form.company || undefined,
-          purpose: form.purpose,
-        })
-        .then((r) => {
-          const d = r.data;
-          const raw: Array<Record<string, string>> = Array.isArray(d)
-            ? d
-            : (d?.data ?? d?.results ?? [d]);
-          return raw.filter(Boolean).map((item) => ({
-            id:
-              item.id ??
-              `${form.firstName}-${form.lastName}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-            firstName: form.firstName,
-            lastName: form.lastName,
-            company: item.company ?? form.company ?? "",
-            purpose: form.purpose,
-            title: item.title ?? item.headline,
-            linkedin_url: item.linkedin_url ?? item.url,
-          })) as NameCandidate[];
-        }),
-    onSuccess: (data) => {
-      if (!data.length) {
-        toast.info("No LinkedIn profile found for that name");
-        return;
+  const searchOne = (row: SearchRow) =>
+    api
+      .post("/api/discovery/by-name", {
+        firstName: row.firstName,
+        lastName: row.lastName,
+        company: row.company || undefined,
+        purpose: row.purpose,
+      })
+      .then((r) => {
+        const d = r.data;
+        const raw: Array<Record<string, string>> = Array.isArray(d)
+          ? d
+          : (d?.data ?? d?.results ?? [d]);
+        return raw.filter(Boolean).map((item) => ({
+          id:
+            item.id ??
+            `${row.firstName}-${row.lastName}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          firstName: row.firstName,
+          lastName: row.lastName,
+          company: item.company ?? row.company ?? "",
+          purpose: row.purpose,
+          title: item.title ?? item.headline,
+          linkedin_url: item.linkedin_url ?? item.url,
+        })) as NameCandidate[];
+      });
+
+  const runSearch = async () => {
+    const validRows = rows.filter(
+      (r) => r.firstName.trim() && r.lastName.trim() && r.purpose.trim(),
+    );
+    if (validRows.length === 0) return;
+    setIsSearching(true);
+    let found = 0;
+    let failed = 0;
+    for (const row of validRows) {
+      try {
+        const candidates = await searchOne(row);
+        if (candidates.length) {
+          setResults((prev) => [...candidates, ...prev]);
+          found += candidates.length;
+        }
+      } catch (err: unknown) {
+        failed++;
+        const status = (err as { response?: { status?: number } })?.response?.status;
+        const serverMsg = (err as { response?: { data?: { error?: string } } })?.response?.data
+          ?.error;
+        const msg =
+          serverMsg ??
+          (status === 404
+            ? "Search failed — backend endpoint not found (404)"
+            : "Search failed — check backend connection");
+        toast.error(`${row.firstName} ${row.lastName}: ${msg}`);
       }
-      setResults((prev) => [...data, ...prev]);
-      toast.success(`${data.length} profile${data.length === 1 ? "" : "s"} found`);
-    },
-    onError: (err: unknown) => {
-      const status = (err as { response?: { status?: number } })?.response?.status;
-      const serverMsg = (err as { response?: { data?: { error?: string } } })?.response?.data
-        ?.error;
-      const msg =
-        serverMsg ??
-        (status === 404
-          ? "Search failed — backend endpoint not found (404)"
-          : "Search failed — check backend connection");
-      toast.error(msg);
-    },
-  });
+    }
+    setIsSearching(false);
+    if (found) toast.success(`${found} profile${found === 1 ? "" : "s"} found`);
+    else if (!failed) toast.info("No LinkedIn profiles found");
+  };
 
   const connectMutation = useMutation({
     mutationFn: (candidate: NameCandidate) =>
@@ -178,30 +218,102 @@ export function ByNameSearch() {
   return (
     <CollapsibleSection
       eyebrow="Option 4"
-      title="By name LinkedIn connection request"
-      description="Search for a specific person on LinkedIn and send a connection request."
+      title="By name LinkedIn outreach"
+      description="Search for one or more specific people on LinkedIn, send connection requests, and run the whole outreach funnel through to email escalation — all in one place."
       primaryAction={
-        <Button
-          size="sm"
-          disabled={
-            searchMutation.isPending ||
-            !form.firstName.trim() ||
-            !form.lastName.trim() ||
-            !form.purpose.trim()
-          }
-          onClick={() => searchMutation.mutate()}
-        >
-          {searchMutation.isPending ? (
+        <Button size="sm" disabled={isSearching} onClick={runSearch}>
+          {isSearching ? (
             <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
           ) : (
             <Search className="mr-1.5 h-4 w-4" />
           )}
-          {searchMutation.isPending ? "Searching…" : "Find LinkedIn profile"}
+          {isSearching ? "Searching…" : `Find LinkedIn profile${rows.length === 1 ? "" : "s"}`}
         </Button>
       }
-      footer={
-        results.length > 0 && (
-          <div className="space-y-3 pt-4">
+    >
+      <div className="space-y-4">
+        {rows.map((row, i) => (
+          <div key={row.id} className="rounded-md border bg-muted/10 p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-xs font-medium text-muted-foreground">Person {i + 1}</span>
+              {rows.length > 1 && (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                  onClick={() => removeRow(row.id)}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="mb-1 block text-xs font-medium">Name</label>
+                <Input
+                  value={row.firstName}
+                  onChange={(e) => updateRow(row.id, { firstName: e.target.value })}
+                  placeholder="e.g. Lena"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium">Surname</label>
+                <Input
+                  value={row.lastName}
+                  onChange={(e) => updateRow(row.id, { lastName: e.target.value })}
+                  placeholder="e.g. Krüger"
+                />
+              </div>
+              <div className="col-span-2">
+                <label className="mb-1 block text-xs font-medium">Purpose of contact</label>
+                <Select
+                  value={row.showCustomPurposeInput ? OTHER_VALUE : row.purpose || undefined}
+                  onValueChange={(value) => handlePurposeSelect(row.id, value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a purpose" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {purposeOptions.map((p) => (
+                      <SelectItem key={p} value={p}>
+                        {p}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value={OTHER_VALUE}>Other…</SelectItem>
+                  </SelectContent>
+                </Select>
+                {row.showCustomPurposeInput && (
+                  <Textarea
+                    className="mt-2"
+                    rows={2}
+                    value={row.purpose}
+                    onChange={(e) => updateRow(row.id, { purpose: e.target.value })}
+                    onBlur={() => saveCustomPurpose(row.purpose)}
+                    placeholder="Type your own reason — it'll be saved for next time"
+                  />
+                )}
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium">
+                  Company <span className="text-muted-foreground">(optional)</span>
+                </label>
+                <Input
+                  value={row.company}
+                  onChange={(e) => updateRow(row.id, { company: e.target.value })}
+                  placeholder="e.g. Nordlys AI"
+                />
+              </div>
+            </div>
+          </div>
+        ))}
+        <Button size="sm" variant="outline" onClick={addRow}>
+          <Plus className="mr-1.5 h-3.5 w-3.5" />
+          Add another person
+        </Button>
+      </div>
+      <div className="space-y-6 pt-4">
+        {results.length > 0 && (
+          <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/20 p-3">
               <Button
                 size="sm"
@@ -306,64 +418,23 @@ export function ByNameSearch() {
               </Table>
             </div>
           </div>
-        )
-      }
-    >
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="mb-1 block text-xs font-medium">Name</label>
-          <Input
-            value={form.firstName}
-            onChange={(e) => setForm((f) => ({ ...f, firstName: e.target.value }))}
-            placeholder="e.g. Lena"
-          />
+        )}
+
+        {/* The rest of the Option 4 funnel — all one box, one fold */}
+        <div className="border-t pt-6">
+          <NameSearchLeads />
         </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium">Surname</label>
-          <Input
-            value={form.lastName}
-            onChange={(e) => setForm((f) => ({ ...f, lastName: e.target.value }))}
-            placeholder="e.g. Krüger"
-          />
+        <div className="border-t pt-6">
+          <LinkedinPendingConnections />
         </div>
-        <div className="col-span-2">
-          <label className="mb-1 block text-xs font-medium">Purpose of contact</label>
-          <Select
-            value={showCustomPurposeInput ? OTHER_VALUE : form.purpose || undefined}
-            onValueChange={handlePurposeSelect}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select a purpose" />
-            </SelectTrigger>
-            <SelectContent>
-              {purposeOptions.map((p) => (
-                <SelectItem key={p} value={p}>
-                  {p}
-                </SelectItem>
-              ))}
-              <SelectItem value={OTHER_VALUE}>Other…</SelectItem>
-            </SelectContent>
-          </Select>
-          {showCustomPurposeInput && (
-            <Textarea
-              className="mt-2"
-              rows={2}
-              value={form.purpose}
-              onChange={(e) => setForm((f) => ({ ...f, purpose: e.target.value }))}
-              onBlur={saveCustomPurpose}
-              placeholder="Type your own reason — it'll be saved for next time"
-            />
-          )}
+        <div className="border-t pt-6">
+          <LinkedinMessageQueue />
         </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium">
-            Company <span className="text-muted-foreground">(optional)</span>
-          </label>
-          <Input
-            value={form.company}
-            onChange={(e) => setForm((f) => ({ ...f, company: e.target.value }))}
-            placeholder="e.g. Nordlys AI"
-          />
+        <div className="border-t pt-6">
+          <LinkedinReminders />
+        </div>
+        <div className="border-t pt-6">
+          <EmailEscalation />
         </div>
       </div>
     </CollapsibleSection>
