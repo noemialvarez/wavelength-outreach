@@ -107,17 +107,20 @@ export function ByNameSearch() {
     setSelected(new Set());
   };
 
-  const sendConnectionRequests = async (ids: string[]) => {
+  // Phantombuster's connect agent is a paced Workflow, not an instant sender —
+  // this adds the person to its invite queue; actual sending happens on the
+  // agent's own recurring schedule (throttled to LinkedIn's safe limits).
+  const queueConnectionRequests = async (ids: string[]) => {
     if (ids.length === 0 || connectingIds.size > 0) return;
     setConnectingIds(new Set(ids));
-    let sent = 0;
+    let queued = 0;
     let failed = 0;
     for (const id of ids) {
       const candidate = results.find((r) => r.id === id);
       if (!candidate) continue;
       try {
         await connectMutation.mutateAsync(candidate);
-        sent++;
+        queued++;
       } catch {
         failed++;
       }
@@ -131,7 +134,7 @@ export function ByNameSearch() {
     setResults((prev) => prev.filter((r) => !ids.includes(r.id)));
     setSelected(new Set());
     toast.success(
-      `${sent} connection request${sent === 1 ? "" : "s"} sent${failed ? `, ${failed} failed` : ""}`,
+      `${queued} connection request${queued === 1 ? "" : "s"} queued${failed ? `, ${failed} failed` : ""}`,
     );
   };
 
@@ -143,7 +146,8 @@ export function ByNameSearch() {
         </div>
         <h2 className="text-base font-semibold">By name</h2>
         <p className="text-xs text-muted-foreground">
-          Search for a specific person on LinkedIn and send a connection request.
+          Search for a specific person on LinkedIn and queue a connection request — Phantombuster
+          sends it on its own paced schedule, not instantly.
         </p>
       </div>
       <div className="grid grid-cols-2 gap-4">
@@ -229,17 +233,17 @@ export function ByNameSearch() {
               size="sm"
               className="ml-auto"
               disabled={selected.size === 0 || connectingIds.size > 0}
-              onClick={() => sendConnectionRequests(Array.from(selected))}
+              onClick={() => queueConnectionRequests(Array.from(selected))}
             >
               {connectingIds.size > 0 ? (
                 <>
                   <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                  Sending… ({connectingIds.size} left)
+                  Queuing… ({connectingIds.size} left)
                 </>
               ) : (
                 <>
                   <Send className="mr-1.5 h-3.5 w-3.5" />
-                  Send connection request{selected.size === 1 ? "" : "s"}
+                  Queue connection request{selected.size === 1 ? "" : "s"}
                 </>
               )}
             </Button>
@@ -294,12 +298,12 @@ export function ByNameSearch() {
                         variant="outline"
                         className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
                         disabled={connectingIds.size > 0}
-                        onClick={() => sendConnectionRequests([r.id])}
+                        onClick={() => queueConnectionRequests([r.id])}
                       >
                         {connectingIds.has(r.id) ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
                         ) : (
-                          "Send connection request"
+                          "Queue connection request"
                         )}
                       </Button>
                     </TableCell>
