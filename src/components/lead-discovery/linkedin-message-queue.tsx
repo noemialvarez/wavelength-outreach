@@ -71,7 +71,7 @@ export function LinkedinMessageQueue() {
         <div>
           <h2 className="text-base font-semibold">LinkedIn message queue</h2>
           <p className="text-xs text-muted-foreground">
-            Connections accepted 4h+ ago — draft a personalized message and push to Lemlist.
+            Connections accepted 4h+ ago — draft a personalized message and send it on LinkedIn.
           </p>
         </div>
         {leads.length > 0 && (
