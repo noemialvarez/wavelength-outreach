@@ -416,15 +416,19 @@ function LeadDiscoveryPage() {
     });
   };
 
-  const bulkSetSignals = (ids: string[], action: "approve" | "skip") => {
+  const bulkSetSignals = async (ids: string[], action: "approve" | "skip") => {
     if (ids.length === 0) return;
-    ids.forEach((id) => {
-      if (action === "approve") approveMutation.mutate(id);
-      else dismissMutation.mutate(id);
-    });
-    toast.success(
-      `${ids.length} signal${ids.length === 1 ? "" : "s"} ${action === "approve" ? "approved" : "skipped"}`,
+    const results = await Promise.allSettled(
+      ids.map((id) =>
+        action === "approve" ? approveMutation.mutateAsync(id) : dismissMutation.mutateAsync(id),
+      ),
     );
+    const succeeded = results.filter((r) => r.status === "fulfilled").length;
+    if (succeeded) {
+      toast.success(
+        `${succeeded} signal${succeeded === 1 ? "" : "s"} ${action === "approve" ? "approved" : "skipped"}`,
+      );
+    }
     setSelectedSignals((prev) => {
       const next = new Set(prev);
       ids.forEach((id) => next.delete(id));
@@ -434,12 +438,6 @@ function LeadDiscoveryPage() {
 
   const setLeadStatus = (id: string, status: LeadStatus) => {
     updateStatusMutation.mutate({ id, status });
-  };
-
-  const bulkSet = (status: LeadStatus) => {
-    selected.forEach((id) => updateStatusMutation.mutate({ id, status }));
-    toast.success(`${selected.size} lead${selected.size === 1 ? "" : "s"} ${status.toLowerCase()}`);
-    setSelected(new Set());
   };
 
   // Runs one lead at a time (founder + email lookups in parallel per lead) so we
@@ -1198,8 +1196,12 @@ function LeadDiscoveryPage() {
             const rows = filtered as LeadRow[];
             const icpLeads = rows.filter((l) => l.source === "icp_filters");
             const descLeads = rows.filter((l) => l.source === "company_description");
+            const nameLeads = rows.filter((l) => l.source === "by_name");
             const signalLeads = rows.filter(
-              (l) => l.source !== "icp_filters" && l.source !== "company_description",
+              (l) =>
+                l.source !== "icp_filters" &&
+                l.source !== "company_description" &&
+                l.source !== "by_name",
             );
 
             const renderTable = (items: LeadRow[]) => (
@@ -1387,15 +1389,21 @@ function LeadDiscoveryPage() {
             const sections: Array<{ title: string; tone: string; items: LeadRow[] }> = [
               { title: "Leads from ICP Filters", tone: sectionTone, items: icpLeads },
               { title: "Leads from Company Description", tone: sectionTone, items: descLeads },
-              { title: "Leads from Signal Scan", tone: sectionTone, items: signalLeads },
+              { title: "Leads from Name Search", tone: sectionTone, items: nameLeads },
+              { title: "Leads by News Sources", tone: sectionTone, items: signalLeads },
             ].filter((s) => s.items.length > 0);
 
-            const bulkSetIds = (ids: string[], status: LeadStatus) => {
+            const bulkSetIds = async (ids: string[], status: LeadStatus) => {
               if (ids.length === 0) return;
-              ids.forEach((id) => updateStatusMutation.mutate({ id, status }));
-              toast.success(
-                `${ids.length} lead${ids.length === 1 ? "" : "s"} ${status.toLowerCase()}`,
+              const results = await Promise.allSettled(
+                ids.map((id) => updateStatusMutation.mutateAsync({ id, status })),
               );
+              const succeeded = results.filter((r) => r.status === "fulfilled").length;
+              if (succeeded) {
+                toast.success(
+                  `${succeeded} lead${succeeded === 1 ? "" : "s"} ${status.toLowerCase()}`,
+                );
+              }
               setSelected((prev) => {
                 const next = new Set(prev);
                 ids.forEach((id) => next.delete(id));
