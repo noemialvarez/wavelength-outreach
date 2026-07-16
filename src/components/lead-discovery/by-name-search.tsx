@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, Loader2, Send } from "lucide-react";
+import { Search, Loader2, Send, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -101,6 +101,11 @@ export function ByNameSearch() {
 
   const allSelected = results.length > 0 && results.every((r) => selected.has(r.id));
   const toggleAll = () => setSelected(allSelected ? new Set() : new Set(results.map((r) => r.id)));
+
+  const deleteSelected = () => {
+    setResults((prev) => prev.filter((r) => !selected.has(r.id)));
+    setSelected(new Set());
+  };
 
   const sendConnectionRequests = async (ids: string[]) => {
     if (ids.length === 0 || connectingIds.size > 0) return;
@@ -210,6 +215,16 @@ export function ByNameSearch() {
               {allSelected ? "Clear all" : "Select all"}
             </Button>
             <span className="text-xs text-muted-foreground">{selected.size} selected</span>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-muted-foreground hover:text-destructive"
+              disabled={selected.size === 0}
+              onClick={deleteSelected}
+            >
+              <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+              Delete selected
+            </Button>
             <Button
               size="sm"
               className="ml-auto"
