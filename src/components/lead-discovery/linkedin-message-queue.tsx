@@ -3,9 +3,9 @@ import { RefreshCw, Send, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { EmptyState } from "@/components/empty-state";
+import { CollapsibleSection } from "@/components/lead-discovery/collapsible-section";
 import api from "@/lib/api";
 
 type ReadyLead = {
@@ -66,19 +66,15 @@ export function LinkedinMessageQueue() {
   const getBody = (l: ReadyLead) => localDrafts[l.id] ?? l.linkedin_message_draft ?? "";
 
   return (
-    <Card className="p-6">
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <h2 className="text-base font-semibold">LinkedIn message queue</h2>
-          <p className="text-xs text-muted-foreground">
-            Connections accepted 4h+ ago — draft a personalized message and send it on LinkedIn.
-          </p>
-        </div>
-        {leads.length > 0 && (
-          <span className="text-xs text-muted-foreground">{leads.length} ready</span>
-        )}
-      </div>
-
+    <CollapsibleSection
+      title="LinkedIn message queue"
+      description="Connections accepted 4h+ ago — draft a personalized message and send it on LinkedIn."
+      badge={
+        leads.length > 0 && (
+          <span className="text-xs font-normal text-muted-foreground">{leads.length} ready</span>
+        )
+      }
+    >
       {isLoading ? (
         <p className="py-8 text-center text-sm text-muted-foreground">Loading…</p>
       ) : leads.length === 0 ? (
@@ -149,6 +145,6 @@ export function LinkedinMessageQueue() {
           ))}
         </div>
       )}
-    </Card>
+    </CollapsibleSection>
   );
 }

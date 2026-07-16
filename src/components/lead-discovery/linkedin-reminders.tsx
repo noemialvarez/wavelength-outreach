@@ -3,7 +3,6 @@ import { Loader2, Bell } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
@@ -14,6 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { EmptyState } from "@/components/empty-state";
+import { CollapsibleSection } from "@/components/lead-discovery/collapsible-section";
 import api from "@/lib/api";
 
 type NoReplyLead = {
@@ -78,19 +78,15 @@ export function LinkedinReminders() {
   };
 
   return (
-    <Card className="p-6">
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <h2 className="text-base font-semibold">No reply after 3 days</h2>
-          <p className="text-xs text-muted-foreground">
-            LinkedIn messages sent 3+ days ago with no reply — send a reminder.
-          </p>
-        </div>
-        {leads.length > 0 && (
-          <span className="text-xs text-muted-foreground">{leads.length} pending</span>
-        )}
-      </div>
-
+    <CollapsibleSection
+      title="No reply after 3 days"
+      description="LinkedIn messages sent 3+ days ago with no reply — send a reminder."
+      badge={
+        leads.length > 0 && (
+          <span className="text-xs font-normal text-muted-foreground">{leads.length} pending</span>
+        )
+      }
+    >
       {isLoading ? (
         <p className="py-8 text-center text-sm text-muted-foreground">Loading…</p>
       ) : leads.length === 0 ? (
@@ -183,6 +179,6 @@ export function LinkedinReminders() {
           </div>
         </div>
       )}
-    </Card>
+    </CollapsibleSection>
   );
 }

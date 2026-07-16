@@ -66,6 +66,9 @@ type State = {
   prospects: Prospect[];
   engagement: EngagementPost[];
   sequences: SequenceRow[];
+  // Custom "Purpose of contact" reasons typed into Option 4's dropdown,
+  // remembered so they show up as options on future searches.
+  customContactPurposes: string[];
 };
 
 const KEY = "insightsphere-state-v3";
@@ -74,27 +77,62 @@ const seed = (): State => ({
   sources: [
     { id: "s1", name: "Wellfound", url: "https://wellfound.com/", enabled: true },
     { id: "s4", name: "Startupticker.ch", url: "https://www.startupticker.ch/", enabled: true },
-    { id: "s29", name: "Swiss Startup Radar", url: "https://www.swissstartupradar.ch/", enabled: true },
+    {
+      id: "s29",
+      name: "Swiss Startup Radar",
+      url: "https://www.swissstartupradar.ch/",
+      enabled: true,
+    },
     { id: "s26", name: "Crunchbase", url: "https://www.crunchbase.com/", enabled: true },
     { id: "s30", name: "LinkedIn News", url: "https://www.linkedin.com/news/", enabled: true },
     { id: "s2", name: "Y Combinator Jobs", url: "https://www.ycombinator.com/jobs", enabled: true },
     { id: "s3", name: "Startup Digest", url: "https://www.startupdigest.com/", enabled: true },
     { id: "s5", name: "Sifted", url: "https://sifted.eu/", enabled: true },
-    { id: "s6", name: "TechCrunch Startups", url: "https://techcrunch.com/startups/", enabled: true },
+    {
+      id: "s6",
+      name: "TechCrunch Startups",
+      url: "https://techcrunch.com/startups/",
+      enabled: true,
+    },
     { id: "s7", name: "StrictlyVC", url: "https://www.strictlyvc.com/", enabled: true },
     { id: "s8", name: "Semafor Business", url: "https://www.semafor.com/business", enabled: true },
-    { id: "s9", name: "Lenny's Newsletter", url: "https://www.lennysnewsletter.com/", enabled: true },
+    {
+      id: "s9",
+      name: "Lenny's Newsletter",
+      url: "https://www.lennysnewsletter.com/",
+      enabled: true,
+    },
     { id: "s10", name: "First Round Review", url: "https://review.firstround.com/", enabled: true },
-    { id: "s11", name: "Y Combinator Blog", url: "https://www.ycombinator.com/blog", enabled: true },
+    {
+      id: "s11",
+      name: "Y Combinator Blog",
+      url: "https://www.ycombinator.com/blog",
+      enabled: true,
+    },
     { id: "s12", name: "Not Boring", url: "https://www.notboring.co/", enabled: true },
     { id: "s13", name: "Future (a16z)", url: "https://future.com/", enabled: true },
     { id: "s14", name: "Latent Space", url: "https://www.latent.space/", enabled: true },
-    { id: "s15", name: "The Batch (DeepLearning.AI)", url: "https://www.deeplearning.ai/the-batch/", enabled: true },
-    { id: "s16", name: "Sequoia Articles", url: "https://www.sequoiacap.com/article/", enabled: true },
+    {
+      id: "s15",
+      name: "The Batch (DeepLearning.AI)",
+      url: "https://www.deeplearning.ai/the-batch/",
+      enabled: true,
+    },
+    {
+      id: "s16",
+      name: "Sequoia Articles",
+      url: "https://www.sequoiacap.com/article/",
+      enabled: true,
+    },
     { id: "s17", name: "Bessemer Atlas", url: "https://www.bvp.com/atlas", enabled: true },
     { id: "s18", name: "NFX Essays", url: "https://www.nfx.com/post", enabled: true },
     { id: "s19", name: "a16z Newsletter", url: "https://a16z.com/newsletter/", enabled: true },
-    { id: "s20", name: "Meritech Blog", url: "https://www.meritechcapital.com/blog", enabled: true },
+    {
+      id: "s20",
+      name: "Meritech Blog",
+      url: "https://www.meritechcapital.com/blog",
+      enabled: true,
+    },
     { id: "s21", name: "Tomasz Tunguz", url: "https://www.tomtunguz.com/", enabled: true },
     { id: "s22", name: "Every", url: "https://www.every.to/", enabled: true },
     { id: "s23", name: "The Information", url: "https://www.theinformation.com/", enabled: true },
@@ -238,6 +276,7 @@ const seed = (): State => ({
       status: "Bounced",
     },
   ],
+  customContactPurposes: [],
 });
 
 let state: State = (() => {
@@ -250,6 +289,13 @@ let state: State = (() => {
       if (parsed?.icp && typeof parsed.icp.companySize === "string") {
         parsed.icp.companySizes = parsed.icp.companySize ? [parsed.icp.companySize] : [];
         delete parsed.icp.companySize;
+      }
+      // migrate: backfill customContactPurposes for state saved before it
+      // existed — must be a real, stable array (not a per-call `?? []`
+      // fallback in the selector) or useSyncExternalStore sees a new
+      // reference every render and loops forever.
+      if (!Array.isArray(parsed?.customContactPurposes)) {
+        parsed.customContactPurposes = [];
       }
       return parsed as State;
     }

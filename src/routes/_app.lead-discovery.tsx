@@ -50,6 +50,8 @@ import { ByNameSearch } from "@/components/lead-discovery/by-name-search";
 import { LinkedinMessageQueue } from "@/components/lead-discovery/linkedin-message-queue";
 import { LinkedinReminders } from "@/components/lead-discovery/linkedin-reminders";
 import { EmailEscalation } from "@/components/lead-discovery/email-escalation";
+import { LinkedinPendingConnections } from "@/components/lead-discovery/linkedin-pending-connections";
+import { CollapsibleSection } from "@/components/lead-discovery/collapsible-section";
 
 export const Route = createFileRoute("/_app/lead-discovery")({
   head: () => ({ meta: [{ title: "Lead Discovery — Wavelength" }] }),
@@ -489,22 +491,30 @@ function LeadDiscoveryPage() {
         <h1 className="text-2xl font-semibold">Lead Discovery</h1>
         <p className="text-sm text-muted-foreground">
           Discover potential leads based on 4 options: (1) ICP filters, (2) company description, (3)
-          by name and (4) by news sources
+          by news sources and (4) by name
         </p>
       </div>
 
       {/* Option 1 — ICP filters */}
-      <Card className="p-6">
-        <div className="mb-4">
-          <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-brand-turquoise">
-            Option 1
-          </div>
-          <h2 className="text-base font-semibold">By ICP filters</h2>
-          <p className="text-xs text-muted-foreground">
-            All filters are optional. Used to enrich leads through Sales Navigator. Saved
-            automatically.
-          </p>
-        </div>
+      <CollapsibleSection
+        eyebrow="Option 1"
+        title="By ICP filters"
+        description="All filters are optional. Used to enrich leads through Sales Navigator. Saved automatically."
+        primaryAction={
+          <Button
+            size="sm"
+            disabled={icpSearchMutation.isPending}
+            onClick={() => icpSearchMutation.mutate()}
+          >
+            {icpSearchMutation.isPending ? (
+              <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+            ) : (
+              <Search className="mr-1.5 h-4 w-4" />
+            )}
+            {icpSearchMutation.isPending ? "Searching…" : "Find matching ICP"}
+          </Button>
+        }
+      >
         <div className="grid grid-cols-2 gap-4">
           <div className="col-span-2">
             <label className="mb-1 block text-xs font-medium">
@@ -601,100 +611,105 @@ function LeadDiscoveryPage() {
             />
           </div>
         </div>
-        <div className="flex justify-end pt-4">
+      </CollapsibleSection>
+
+      {icpResults.length > 0 && (
+        <Card className="space-y-3 p-6">
+          <div className="text-xs font-medium text-muted-foreground">
+            {icpResults.length} matching {icpResults.length === 1 ? "company" : "companies"}
+          </div>
+          {icpResults.map((m, i) => {
+            const key = m.id ?? `${m.company_name ?? m.company ?? "unknown"}-${i}`;
+            const site = m.website ?? m.url;
+            const cardKey = m.id ?? m.company_name ?? m.company ?? "";
+            const approved = approvedIcpMatches.has(cardKey);
+            const isApprovingThis =
+              approveIcpMutation.isPending &&
+              (approveIcpMutation.variables?.id ??
+                approveIcpMutation.variables?.company_name ??
+                approveIcpMutation.variables?.company) === cardKey;
+            return (
+              <div key={key} className="rounded-md border bg-card p-4 space-y-2">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="font-bold">{m.company_name ?? m.company}</div>
+                    {site && (
+                      <a
+                        href={site.startsWith("http") ? site : `https://${site}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-sm text-brand-blue hover:underline"
+                      >
+                        {site}
+                      </a>
+                    )}
+                  </div>
+                  <Button
+                    size="sm"
+                    disabled={approved || isApprovingThis}
+                    onClick={() => approveIcpMutation.mutate(m)}
+                    style={{ backgroundColor: "#E31B84", color: "white" }}
+                    className="hover:opacity-90"
+                  >
+                    {isApprovingThis ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : approved ? (
+                      "Approved"
+                    ) : (
+                      "Approve as lead"
+                    )}
+                  </Button>
+                </div>
+                {(m.industry || m.geography) && (
+                  <div className="text-xs text-muted-foreground">
+                    {[m.industry, m.geography].filter(Boolean).join(" · ")}
+                  </div>
+                )}
+                {m.description && <p className="text-sm">{m.description}</p>}
+                {m.whyMatches && (
+                  <div className="rounded-md bg-muted/60 p-3 text-sm">
+                    <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Why it matches
+                    </div>
+                    {m.whyMatches}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </Card>
+      )}
+
+      {/* Option 2 — By Company Description */}
+      <CollapsibleSection
+        eyebrow="Option 2"
+        title="By company description"
+        description={
+          <>
+            Describe the kind of company you want to find. We&apos;ll match against the broader web.
+          </>
+        }
+        primaryAction={
           <Button
             size="sm"
-            disabled={icpSearchMutation.isPending}
-            onClick={() => icpSearchMutation.mutate()}
+            disabled={descSearchMutation.isPending}
+            onClick={() => {
+              if (!descQuery.description.trim()) {
+                toast.error("Add a company description first");
+                return;
+              }
+              descSearchMutation.mutate();
+            }}
           >
-            {icpSearchMutation.isPending ? (
+            {descSearchMutation.isPending ? (
               <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
             ) : (
               <Search className="mr-1.5 h-4 w-4" />
             )}
-            {icpSearchMutation.isPending ? "Searching…" : "Find matching ICP"}
+            {descSearchMutation.isPending ? "Searching…" : "Find matching companies"}
           </Button>
-        </div>
-
-        {icpResults.length > 0 && (
-          <div className="space-y-3 pt-4">
-            <div className="text-xs font-medium text-muted-foreground">
-              {icpResults.length} matching {icpResults.length === 1 ? "company" : "companies"}
-            </div>
-            {icpResults.map((m, i) => {
-              const key = m.id ?? `${m.company_name ?? m.company ?? "unknown"}-${i}`;
-              const site = m.website ?? m.url;
-              const cardKey = m.id ?? m.company_name ?? m.company ?? "";
-              const approved = approvedIcpMatches.has(cardKey);
-              const isApprovingThis =
-                approveIcpMutation.isPending &&
-                (approveIcpMutation.variables?.id ??
-                  approveIcpMutation.variables?.company_name ??
-                  approveIcpMutation.variables?.company) === cardKey;
-              return (
-                <div key={key} className="rounded-md border bg-card p-4 space-y-2">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="font-bold">{m.company_name ?? m.company}</div>
-                      {site && (
-                        <a
-                          href={site.startsWith("http") ? site : `https://${site}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-sm text-brand-blue hover:underline"
-                        >
-                          {site}
-                        </a>
-                      )}
-                    </div>
-                    <Button
-                      size="sm"
-                      disabled={approved || isApprovingThis}
-                      onClick={() => approveIcpMutation.mutate(m)}
-                      style={{ backgroundColor: "#E31B84", color: "white" }}
-                      className="hover:opacity-90"
-                    >
-                      {isApprovingThis ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : approved ? (
-                        "Approved"
-                      ) : (
-                        "Approve as lead"
-                      )}
-                    </Button>
-                  </div>
-                  {(m.industry || m.geography) && (
-                    <div className="text-xs text-muted-foreground">
-                      {[m.industry, m.geography].filter(Boolean).join(" · ")}
-                    </div>
-                  )}
-                  {m.description && <p className="text-sm">{m.description}</p>}
-                  {m.whyMatches && (
-                    <div className="rounded-md bg-muted/60 p-3 text-sm">
-                      <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                        Why it matches
-                      </div>
-                      {m.whyMatches}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </Card>
-
-      {/* Option 2 — By Company Description */}
-      <Card className="p-6">
-        <div className="mb-4">
-          <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-brand-turquoise">
-            Option 2
-          </div>
-          <h2 className="text-base font-semibold">By company description</h2>
-          <p className="text-xs text-muted-foreground">
-            Describe the kind of company you want to find. We&apos;ll match against the broader web.
-          </p>
-        </div>
+        }
+      >
         <div className="space-y-4">
           <div>
             <label className="mb-1 block text-xs font-medium">
@@ -784,110 +799,83 @@ function LeadDiscoveryPage() {
               />
             </div>
           </div>
-          <div className="flex justify-end">
-            <Button
-              size="sm"
-              disabled={descSearchMutation.isPending}
-              onClick={() => {
-                if (!descQuery.description.trim()) {
-                  toast.error("Add a company description first");
-                  return;
-                }
-                descSearchMutation.mutate();
-              }}
-            >
-              {descSearchMutation.isPending ? (
-                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-              ) : (
-                <Search className="mr-1.5 h-4 w-4" />
-              )}
-              {descSearchMutation.isPending ? "Searching…" : "Find matching companies"}
-            </Button>
-          </div>
+        </div>
+      </CollapsibleSection>
 
-          {descResults.length > 0 && (
-            <div className="space-y-3 pt-2">
-              <div className="text-xs font-medium text-muted-foreground">
-                {descResults.length} matching {descResults.length === 1 ? "company" : "companies"}
-              </div>
-              {descResults.map((m, i) => {
-                const key = m.id ?? `${m.company_name ?? m.company ?? "unknown"}-${i}`;
-                const why = m.whyMatches ?? m.why_it_matches;
-                const site = m.website ?? m.url;
-                const cardKey = m.id ?? m.company_name ?? m.company ?? "";
-                const approved = approvedMatches.has(cardKey);
-                const isApprovingThis =
-                  approveMatchMutation.isPending &&
-                  (approveMatchMutation.variables?.id ??
-                    approveMatchMutation.variables?.company_name ??
-                    approveMatchMutation.variables?.company) === cardKey;
-                return (
-                  <div key={key} className="rounded-md border bg-card p-4 space-y-2">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="font-bold">{m.company_name ?? m.company}</div>
-                        {site && (
-                          <a
-                            href={site.startsWith("http") ? site : `https://${site}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-sm text-brand-blue hover:underline"
-                          >
-                            {site}
-                          </a>
-                        )}
-                      </div>
-                      <Button
-                        size="sm"
-                        disabled={approved || isApprovingThis}
-                        onClick={() => approveMatchMutation.mutate(m)}
-                        style={{ backgroundColor: "#E31B84", color: "white" }}
-                        className="hover:opacity-90"
+      {descResults.length > 0 && (
+        <Card className="space-y-3 p-6">
+          <div className="text-xs font-medium text-muted-foreground">
+            {descResults.length} matching {descResults.length === 1 ? "company" : "companies"}
+          </div>
+          {descResults.map((m, i) => {
+            const key = m.id ?? `${m.company_name ?? m.company ?? "unknown"}-${i}`;
+            const why = m.whyMatches ?? m.why_it_matches;
+            const site = m.website ?? m.url;
+            const cardKey = m.id ?? m.company_name ?? m.company ?? "";
+            const approved = approvedMatches.has(cardKey);
+            const isApprovingThis =
+              approveMatchMutation.isPending &&
+              (approveMatchMutation.variables?.id ??
+                approveMatchMutation.variables?.company_name ??
+                approveMatchMutation.variables?.company) === cardKey;
+            return (
+              <div key={key} className="rounded-md border bg-card p-4 space-y-2">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="font-bold">{m.company_name ?? m.company}</div>
+                    {site && (
+                      <a
+                        href={site.startsWith("http") ? site : `https://${site}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-sm text-brand-blue hover:underline"
                       >
-                        {isApprovingThis ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : approved ? (
-                          "Approved"
-                        ) : (
-                          "Approve as lead"
-                        )}
-                      </Button>
-                    </div>
-                    {(m.industry || m.geography) && (
-                      <div className="text-xs text-muted-foreground">
-                        {[m.industry, m.geography].filter(Boolean).join(" · ")}
-                      </div>
-                    )}
-                    {m.description && <p className="text-sm">{m.description}</p>}
-                    {why && (
-                      <div className="rounded-md bg-muted/60 p-3 text-sm">
-                        <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                          Why it matches
-                        </div>
-                        {why}
-                      </div>
+                        {site}
+                      </a>
                     )}
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </Card>
+                  <Button
+                    size="sm"
+                    disabled={approved || isApprovingThis}
+                    onClick={() => approveMatchMutation.mutate(m)}
+                    style={{ backgroundColor: "#E31B84", color: "white" }}
+                    className="hover:opacity-90"
+                  >
+                    {isApprovingThis ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : approved ? (
+                      "Approved"
+                    ) : (
+                      "Approve as lead"
+                    )}
+                  </Button>
+                </div>
+                {(m.industry || m.geography) && (
+                  <div className="text-xs text-muted-foreground">
+                    {[m.industry, m.geography].filter(Boolean).join(" · ")}
+                  </div>
+                )}
+                {m.description && <p className="text-sm">{m.description}</p>}
+                {why && (
+                  <div className="rounded-md bg-muted/60 p-3 text-sm">
+                    <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Why it matches
+                    </div>
+                    {why}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </Card>
+      )}
 
-      {/* Option 3 — By name */}
-      <ByNameSearch />
-
-      {/* Option 4 — Sources */}
-      <Card className="p-6">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-brand-turquoise">
-              Option 4
-            </div>
-            <h2 className="text-base font-semibold">By news sources</h2>
-            <p className="text-xs text-muted-foreground">Toggle which feeds power your scan.</p>
-          </div>
+      {/* Option 3 — By news sources */}
+      <CollapsibleSection
+        eyebrow="Option 3"
+        title="By news sources"
+        description="Toggle which feeds power your scan."
+        headerExtra={
           <Button
             variant="outline"
             size="sm"
@@ -900,7 +888,14 @@ function LeadDiscoveryPage() {
           >
             <Plus className="mr-1.5 h-4 w-4" /> Add source
           </Button>
-        </div>
+        }
+        primaryAction={
+          <Button size="sm" onClick={() => scanMutation.mutate()} disabled={scanMutation.isPending}>
+            <Play className="mr-1.5 h-4 w-4" />
+            {scanMutation.isPending ? "Scanning..." : "Run signal scan"}
+          </Button>
+        }
+      >
         <div className="space-y-2">
           {(showAllSources ? sources : sources.slice(0, 3)).map((src) => (
             <div key={src.id} className="flex items-center gap-3 rounded-md border bg-muted/20 p-3">
@@ -951,191 +946,188 @@ function LeadDiscoveryPage() {
             </div>
           ))}
         </div>
-        <div className="mt-3 flex items-center justify-between">
-          <div className="min-h-5">
-            {sources.length > 3 && (
-              <button
-                type="button"
-                onClick={() => setShowAllSources((v) => !v)}
-                className="text-sm font-medium text-brand-blue hover:underline"
-              >
-                {showAllSources ? "Hide sources" : `Show all sources (${sources.length})`}
-              </button>
-            )}
-          </div>
-          <Button size="sm" onClick={() => scanMutation.mutate()} disabled={scanMutation.isPending}>
-            <Play className="mr-1.5 h-4 w-4" />
-            {scanMutation.isPending ? "Scanning..." : "Run signal scan"}
-          </Button>
-        </div>
-
-        {/* Scan results inside Option 4 */}
-        <div className="mt-6 border-t pt-4">
-          <div className="mb-3 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
-            <div className="flex min-w-0 items-center gap-2">
-              <Zap className="h-4 w-4 shrink-0 text-brand-turquoise" />
-              <h3 className="truncate text-sm font-semibold">Signal scan results</h3>
-              {newSignals.length > 0 && (
-                <span className="shrink-0 rounded-full bg-brand-turquoise/15 px-2 py-0.5 text-xs font-medium text-brand-turquoise">
-                  {newSignals.length} new
-                </span>
-              )}
-            </div>
-            {newSignals.length > 5 && (
-              <button
-                type="button"
-                onClick={() => setShowAllSignals((v) => !v)}
-                className="text-sm font-medium text-brand-blue hover:underline"
-              >
-                {showAllSignals ? "Hide signals" : `Show all signals (${newSignals.length})`}
-              </button>
-            )}
-          </div>
-
-          {signalsLoading ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">Loading signals…</p>
-          ) : newSignals.length === 0 ? (
-            <EmptyState icon={Zap} message="No new signals. Run a scan to pull fresh results." />
-          ) : (
-            <div className="space-y-3">
-              <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/20 p-3">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
-                  onClick={toggleAllSignals}
-                >
-                  {allSignalsSelected ? "Clear all" : "Select all"}
-                </Button>
-                <span className="text-xs text-muted-foreground">
-                  {selectedSignalIds.length} selected
-                </span>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
-                  disabled={selectedSignalIds.length === 0}
-                  onClick={() => bulkSetSignals(selectedSignalIds, "approve")}
-                >
-                  Approve selected
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
-                  disabled={selectedSignalIds.length === 0}
-                  onClick={() => bulkSetSignals(selectedSignalIds, "skip")}
-                >
-                  Skip selected
-                </Button>
-              </div>
-              <div className="overflow-hidden rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-10"></TableHead>
-                      <TableHead>Company</TableHead>
-                      <TableHead>Signal</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Source</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {visibleSignals.map((sig) => {
-                      const signalType = sig.raw_data?.signal_type;
-                      const signalDesc = sig.raw_data?.signal_description;
-                      const isApproving =
-                        approveMutation.isPending && approveMutation.variables === sig.id;
-                      const isDismissing =
-                        dismissMutation.isPending && dismissMutation.variables === sig.id;
-                      return (
-                        <TableRow key={sig.id}>
-                          <TableCell>
-                            <Checkbox
-                              checked={selectedSignals.has(sig.id)}
-                              onCheckedChange={() => toggleSignalSelect(sig.id)}
-                            />
-                          </TableCell>
-                          <TableCell className="font-medium">{sig.company_name ?? "—"}</TableCell>
-                          <TableCell className="max-w-sm text-sm text-muted-foreground">
-                            {sig.signal_url ? (
-                              <a
-                                href={sig.signal_url}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="hover:underline"
-                              >
-                                {signalDesc ?? sig.signal_url}
-                              </a>
-                            ) : (
-                              (signalDesc ?? "—")
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {signalType && (
-                              <StatusBadge
-                                label={signalType}
-                                tone={signalTones[signalType] ?? "muted"}
-                              />
-                            )}
-                          </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
-                            {sig.source}
-                          </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
-                            {sig.created_at?.slice(0, 10)}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-1.5">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
-                                onClick={() => approveMutation.mutate(sig.id)}
-                                disabled={isApproving || isDismissing}
-                              >
-                                {isApproving ? (
-                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                ) : (
-                                  "Approve"
-                                )}
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => dismissMutation.mutate(sig.id)}
-                                disabled={isApproving || isDismissing}
-                              >
-                                {isDismissing ? (
-                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                ) : (
-                                  "Skip"
-                                )}
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-            </div>
+        <div className="mt-3 min-h-5">
+          {sources.length > 3 && (
+            <button
+              type="button"
+              onClick={() => setShowAllSources((v) => !v)}
+              className="text-sm font-medium text-brand-blue hover:underline"
+            >
+              {showAllSources ? "Hide sources" : `Show all sources (${sources.length})`}
+            </button>
           )}
         </div>
+      </CollapsibleSection>
+
+      {/* Scan results — always visible */}
+      <Card className="p-6">
+        <div className="mb-3 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <Zap className="h-4 w-4 shrink-0 text-brand-turquoise" />
+            <h3 className="truncate text-sm font-semibold">Signal scan results</h3>
+            {newSignals.length > 0 && (
+              <span className="shrink-0 rounded-full bg-brand-turquoise/15 px-2 py-0.5 text-xs font-medium text-brand-turquoise">
+                {newSignals.length} new
+              </span>
+            )}
+          </div>
+          {newSignals.length > 5 && (
+            <button
+              type="button"
+              onClick={() => setShowAllSignals((v) => !v)}
+              className="text-sm font-medium text-brand-blue hover:underline"
+            >
+              {showAllSignals ? "Hide signals" : `Show all signals (${newSignals.length})`}
+            </button>
+          )}
+        </div>
+
+        {signalsLoading ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">Loading signals…</p>
+        ) : newSignals.length === 0 ? (
+          <EmptyState icon={Zap} message="No new signals. Run a scan to pull fresh results." />
+        ) : (
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/20 p-3">
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
+                onClick={toggleAllSignals}
+              >
+                {allSignalsSelected ? "Clear all" : "Select all"}
+              </Button>
+              <span className="text-xs text-muted-foreground">
+                {selectedSignalIds.length} selected
+              </span>
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
+                disabled={selectedSignalIds.length === 0}
+                onClick={() => bulkSetSignals(selectedSignalIds, "approve")}
+              >
+                Approve selected
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
+                disabled={selectedSignalIds.length === 0}
+                onClick={() => bulkSetSignals(selectedSignalIds, "skip")}
+              >
+                Skip selected
+              </Button>
+            </div>
+            <div className="overflow-hidden rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-10"></TableHead>
+                    <TableHead>Company</TableHead>
+                    <TableHead>Signal</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Source</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {visibleSignals.map((sig) => {
+                    const signalType = sig.raw_data?.signal_type;
+                    const signalDesc = sig.raw_data?.signal_description;
+                    const isApproving =
+                      approveMutation.isPending && approveMutation.variables === sig.id;
+                    const isDismissing =
+                      dismissMutation.isPending && dismissMutation.variables === sig.id;
+                    return (
+                      <TableRow key={sig.id}>
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedSignals.has(sig.id)}
+                            onCheckedChange={() => toggleSignalSelect(sig.id)}
+                          />
+                        </TableCell>
+                        <TableCell className="font-medium">{sig.company_name ?? "—"}</TableCell>
+                        <TableCell className="max-w-sm text-sm text-muted-foreground">
+                          {sig.signal_url ? (
+                            <a
+                              href={sig.signal_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="hover:underline"
+                            >
+                              {signalDesc ?? sig.signal_url}
+                            </a>
+                          ) : (
+                            (signalDesc ?? "—")
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {signalType && (
+                            <StatusBadge
+                              label={signalType}
+                              tone={signalTones[signalType] ?? "muted"}
+                            />
+                          )}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {sig.source}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {sig.created_at?.slice(0, 10)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1.5">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
+                              onClick={() => approveMutation.mutate(sig.id)}
+                              disabled={isApproving || isDismissing}
+                            >
+                              {isApproving ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                "Approve"
+                              )}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => dismissMutation.mutate(sig.id)}
+                              disabled={isApproving || isDismissing}
+                            >
+                              {isDismissing ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                "Skip"
+                              )}
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        )}
       </Card>
 
+      {/* Option 4 — By name */}
+      <ByNameSearch />
+
       {/* Leads table */}
-      <Card className="p-6">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-base font-semibold">Leads</h2>
-            <p className="text-xs text-muted-foreground">
-              {filtered.length} of {leads.length} leads
-            </p>
-          </div>
+      <CollapsibleSection
+        title="Leads"
+        badge={
+          <span className="text-xs font-normal text-muted-foreground">
+            {filtered.length} of {leads.length} leads
+          </span>
+        }
+        headerExtra={
           <div className="flex items-center gap-2">
             {collapsedSections.size > 0 && (
               <button
@@ -1171,8 +1163,8 @@ function LeadDiscoveryPage() {
               </SelectContent>
             </Select>
           </div>
-        </div>
-
+        }
+      >
         {leadsLoading ? (
           <p className="py-8 text-center text-sm text-muted-foreground">Loading leads…</p>
         ) : filtered.length === 0 ? (
@@ -1204,7 +1196,12 @@ function LeadDiscoveryPage() {
                 l.source !== "by_name",
             );
 
-            const renderTable = (items: LeadRow[]) => (
+            // showFounderActions: hidden for the Name Search section — those
+            // leads already are the target person, so "Find founder" is
+            // irrelevant, and Apollo email lookup there just burns credits
+            // unnecessarily (email is only looked up later, at the email
+            // escalation stage, if LinkedIn outreach goes nowhere).
+            const renderTable = (items: LeadRow[], showFounderActions = true) => (
               <div className="overflow-hidden rounded-md border">
                 <Table>
                   <TableHeader>
@@ -1272,26 +1269,28 @@ function LeadDiscoveryPage() {
                                 </Tooltip>
                               </TooltipProvider>
                             )}
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
-                              title="Look up email via Apollo"
-                              onClick={() => findEmailMutation.mutate(l.id)}
-                              disabled={
-                                (findEmailMutation.isPending &&
+                            {showFounderActions && (
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
+                                title="Look up email via Apollo"
+                                onClick={() => findEmailMutation.mutate(l.id)}
+                                disabled={
+                                  (findEmailMutation.isPending &&
+                                    findEmailMutation.variables === l.id) ||
+                                  batchLookupIds.has(l.id)
+                                }
+                              >
+                                {(findEmailMutation.isPending &&
                                   findEmailMutation.variables === l.id) ||
-                                batchLookupIds.has(l.id)
-                              }
-                            >
-                              {(findEmailMutation.isPending &&
-                                findEmailMutation.variables === l.id) ||
-                              batchLookupIds.has(l.id) ? (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              ) : (
-                                <Search className="h-3.5 w-3.5" />
-                              )}
-                            </Button>
+                                batchLookupIds.has(l.id) ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  <Search className="h-3.5 w-3.5" />
+                                )}
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                         <TableCell>
@@ -1317,26 +1316,28 @@ function LeadDiscoveryPage() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1.5">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              title="Find founder via LinkedIn"
-                              onClick={() => findFounderMutation.mutate(l.id)}
-                              disabled={
-                                (findFounderMutation.isPending &&
+                            {showFounderActions && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                title="Find founder via LinkedIn"
+                                onClick={() => findFounderMutation.mutate(l.id)}
+                                disabled={
+                                  (findFounderMutation.isPending &&
+                                    findFounderMutation.variables === l.id) ||
+                                  batchLookupIds.has(l.id)
+                                }
+                              >
+                                {(findFounderMutation.isPending &&
                                   findFounderMutation.variables === l.id) ||
-                                batchLookupIds.has(l.id)
-                              }
-                            >
-                              {(findFounderMutation.isPending &&
-                                findFounderMutation.variables === l.id) ||
-                              batchLookupIds.has(l.id) ? (
-                                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                              ) : (
-                                <UserSearch className="mr-1.5 h-3.5 w-3.5" />
-                              )}
-                              Find founder
-                            </Button>
+                                batchLookupIds.has(l.id) ? (
+                                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  <UserSearch className="mr-1.5 h-3.5 w-3.5" />
+                                )}
+                                Find founder
+                              </Button>
+                            )}
                             <Button
                               size="sm"
                               variant="outline"
@@ -1389,8 +1390,8 @@ function LeadDiscoveryPage() {
             const sections: Array<{ title: string; tone: string; items: LeadRow[] }> = [
               { title: "Leads from ICP Filters", tone: sectionTone, items: icpLeads },
               { title: "Leads from Company Description", tone: sectionTone, items: descLeads },
-              { title: "Leads from Name Search", tone: sectionTone, items: nameLeads },
               { title: "Leads by News Sources", tone: sectionTone, items: signalLeads },
+              { title: "Leads from Name Search", tone: sectionTone, items: nameLeads },
             ].filter((s) => s.items.length > 0);
 
             const bulkSetIds = async (ids: string[], status: LeadStatus) => {
@@ -1450,6 +1451,7 @@ function LeadDiscoveryPage() {
                     });
                   };
                   const isCollapsed = collapsedSections.has(s.title);
+                  const isNameSearchSection = s.title === "Leads from Name Search";
                   return (
                     <div key={s.title} className="rounded-lg border bg-muted/10 p-4">
                       <div className="mb-3 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
@@ -1491,25 +1493,27 @@ function LeadDiscoveryPage() {
                             <span className="text-xs text-muted-foreground">
                               {sectionSelected.length} selected
                             </span>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="border-brand-blue/40 text-brand-blue hover:bg-brand-blue/10"
-                              disabled={sectionSelected.length === 0 || batchLookupIds.size > 0}
-                              onClick={() => runBatchLookup(sectionSelected)}
-                            >
-                              {batchLookupIds.size > 0 ? (
-                                <>
-                                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                                  Looking up… ({batchLookupIds.size} left)
-                                </>
-                              ) : (
-                                <>
-                                  <UserSearch className="mr-1.5 h-3.5 w-3.5" />
-                                  Find founders & emails
-                                </>
-                              )}
-                            </Button>
+                            {!isNameSearchSection && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-brand-blue/40 text-brand-blue hover:bg-brand-blue/10"
+                                disabled={sectionSelected.length === 0 || batchLookupIds.size > 0}
+                                onClick={() => runBatchLookup(sectionSelected)}
+                              >
+                                {batchLookupIds.size > 0 ? (
+                                  <>
+                                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                                    Looking up… ({batchLookupIds.size} left)
+                                  </>
+                                ) : (
+                                  <>
+                                    <UserSearch className="mr-1.5 h-3.5 w-3.5" />
+                                    Find founders & emails
+                                  </>
+                                )}
+                              </Button>
+                            )}
                             <Button
                               size="sm"
                               variant="outline"
@@ -1541,7 +1545,7 @@ function LeadDiscoveryPage() {
                           </div>
                         )}
                       </div>
-                      {!isCollapsed && renderTable(s.items)}
+                      {!isCollapsed && renderTable(s.items, !isNameSearchSection)}
                     </div>
                   );
                 })}
@@ -1549,9 +1553,10 @@ function LeadDiscoveryPage() {
             );
           })()
         )}
-      </Card>
+      </CollapsibleSection>
 
-      {/* LinkedIn outreach funnel — follows on from Option 3 (by name) */}
+      {/* LinkedIn outreach funnel — follows on from Option 4 (by name) */}
+      <LinkedinPendingConnections />
       <LinkedinMessageQueue />
       <LinkedinReminders />
       <EmailEscalation />

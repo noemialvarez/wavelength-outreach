@@ -3,7 +3,6 @@ import { Search, Loader2, RefreshCw, Send, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -15,6 +14,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { EmptyState } from "@/components/empty-state";
+import { CollapsibleSection } from "@/components/lead-discovery/collapsible-section";
 import api from "@/lib/api";
 
 type EscalationLead = {
@@ -114,14 +114,10 @@ export function EmailEscalation() {
   const draftFor = (leadId: string) => drafts.find((d) => d.lead_id === leadId);
 
   return (
-    <Card className="p-6">
-      <div className="mb-4">
-        <h2 className="text-base font-semibold">Still no reply — escalate to email</h2>
-        <p className="text-xs text-muted-foreground">
-          Reminder sent with no response — find an email via Apollo and draft an outreach email.
-        </p>
-      </div>
-
+    <CollapsibleSection
+      title="Still no reply — escalate to email"
+      description="Reminder sent with no response — find an email via Apollo and draft an outreach email."
+    >
       {isLoading ? (
         <p className="py-8 text-center text-sm text-muted-foreground">Loading…</p>
       ) : leads.length === 0 ? (
@@ -246,6 +242,6 @@ export function EmailEscalation() {
           )}
         </div>
       )}
-    </Card>
+    </CollapsibleSection>
   );
 }
