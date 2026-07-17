@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/table";
 import { CollapsibleSection } from "@/components/lead-discovery/collapsible-section";
 import { NameSearchLeads } from "@/components/lead-discovery/name-search-leads";
+import { LinkedinPendingConnections } from "@/components/lead-discovery/linkedin-pending-connections";
 import { LinkedinMessageQueue } from "@/components/lead-discovery/linkedin-message-queue";
 import { LinkedinReminders } from "@/components/lead-discovery/linkedin-reminders";
 import { EmailEscalation } from "@/components/lead-discovery/email-escalation";
@@ -43,6 +44,8 @@ type SearchRow = {
   id: string;
   firstName: string;
   lastName: string;
+  linkedinProfile: string;
+  company: string;
 };
 
 const PRESET_PURPOSES = [
@@ -55,7 +58,13 @@ const OTHER_VALUE = "__other__";
 // would create a new array every call and loop useSyncExternalStore forever.
 const NO_CUSTOM_PURPOSES: string[] = [];
 
-const emptyRow = (): SearchRow => ({ id: uid(), firstName: "", lastName: "" });
+const emptyRow = (): SearchRow => ({
+  id: uid(),
+  firstName: "",
+  lastName: "",
+  linkedinProfile: "",
+  company: "",
+});
 
 export function ByNameSearch() {
   const queryClient = useQueryClient();
@@ -106,6 +115,8 @@ export function ByNameSearch() {
       .post("/api/discovery/by-name", {
         firstName: row.firstName,
         lastName: row.lastName,
+        company: row.company || undefined,
+        linkedinProfileUrl: row.linkedinProfile || undefined,
         purpose,
       })
       .then((r) => {
@@ -119,7 +130,7 @@ export function ByNameSearch() {
             `${row.firstName}-${row.lastName}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
           firstName: row.firstName,
           lastName: row.lastName,
-          company: item.company ?? "",
+          company: item.company ?? row.company ?? "",
           purpose,
           title: item.title ?? item.headline,
           linkedin_url: item.linkedin_url ?? item.url,
@@ -244,6 +255,26 @@ export function ByNameSearch() {
                   value={row.lastName}
                   onChange={(e) => updateRow(row.id, { lastName: e.target.value })}
                   placeholder="e.g. Krüger"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium">
+                  LinkedIn profile <span className="text-muted-foreground">(optional)</span>
+                </label>
+                <Input
+                  value={row.linkedinProfile}
+                  onChange={(e) => updateRow(row.id, { linkedinProfile: e.target.value })}
+                  placeholder="https://www.linkedin.com/in/..."
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium">
+                  Company name <span className="text-muted-foreground">(optional)</span>
+                </label>
+                <Input
+                  value={row.company}
+                  onChange={(e) => updateRow(row.id, { company: e.target.value })}
+                  placeholder="e.g. Nordlys AI"
                 />
               </div>
             </div>
@@ -409,6 +440,9 @@ export function ByNameSearch() {
         {/* The rest of the Option 4 funnel — all one box, one fold */}
         <div className="border-t pt-6">
           <NameSearchLeads />
+        </div>
+        <div className="border-t pt-6">
+          <LinkedinPendingConnections />
         </div>
         <div className="border-t pt-6">
           <LinkedinMessageQueue />
