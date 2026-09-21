@@ -1,6 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Plus, Play, Trash2, Loader2, Zap, Radar } from "lucide-react";
+import {
+  Plus,
+  Play,
+  Trash2,
+  Loader2,
+  Zap,
+  Radar,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -51,6 +61,8 @@ type DiscoverySignal = {
   raw_data: {
     signal_description?: string;
     signal_type?: string;
+    country?: string | null;
+    company_description?: string | null;
   } | null;
 };
 
@@ -64,6 +76,8 @@ function NewsSourcesPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [leadsCollapsed, setLeadsCollapsed] = useState(false);
+  // Sort the scan results by signal type; clicking the Type header cycles none → A–Z → Z–A.
+  const [typeSort, setTypeSort] = useState<"asc" | "desc" | null>(null);
 
   const queryClient = useQueryClient();
   const leadActions = useLeadActions();
@@ -76,7 +90,20 @@ function NewsSourcesPage() {
         .then((r) => (r.data.data ?? []) as DiscoverySignal[]),
   });
   const newSignals = signalsData ?? [];
-  const visibleSignals = showAllSignals ? newSignals : newSignals.slice(0, 5);
+  const sortedSignals = useMemo(() => {
+    if (!typeSort) return newSignals;
+    const dir = typeSort === "asc" ? 1 : -1;
+    // Signals without a type always sort last, whichever direction is active.
+    return [...newSignals].sort((a, b) => {
+      const ta = a.raw_data?.signal_type;
+      const tb = b.raw_data?.signal_type;
+      if (!ta && !tb) return 0;
+      if (!ta) return 1;
+      if (!tb) return -1;
+      return ta.localeCompare(tb) * dir;
+    });
+  }, [newSignals, typeSort]);
+  const visibleSignals = showAllSignals ? sortedSignals : sortedSignals.slice(0, 5);
   const signalIds = newSignals.map((sig) => sig.id);
   const selectedSignalIds = signalIds.filter((id) => selectedSignals.has(id));
   const allSignalsSelected = signalIds.length > 0 && selectedSignalIds.length === signalIds.length;
@@ -191,6 +218,7 @@ function NewsSourcesPage() {
       </div>
 
       <CollapsibleSection
+        eyebrow="Option 3"
         title="By news sources"
         description="Toggle which feeds power your scan."
         defaultOpen
@@ -343,8 +371,36 @@ function NewsSourcesPage() {
                     <TableRow>
                       <TableHead className="w-10"></TableHead>
                       <TableHead>Company</TableHead>
+                      <TableHead>Country</TableHead>
+                      <TableHead>Description</TableHead>
                       <TableHead>Signal</TableHead>
-                      <TableHead>Type</TableHead>
+                      <TableHead
+                        aria-sort={
+                          typeSort === "asc"
+                            ? "ascending"
+                            : typeSort === "desc"
+                              ? "descending"
+                              : "none"
+                        }
+                      >
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setTypeSort((d) => (d === null ? "asc" : d === "asc" ? "desc" : null))
+                          }
+                          className="inline-flex items-center gap-1 hover:text-foreground"
+                          title="Sort by type"
+                        >
+                          Type
+                          {typeSort === "asc" ? (
+                            <ArrowUp className="h-3.5 w-3.5" />
+                          ) : typeSort === "desc" ? (
+                            <ArrowDown className="h-3.5 w-3.5" />
+                          ) : (
+                            <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground/60" />
+                          )}
+                        </button>
+                      </TableHead>
                       <TableHead>Source</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
@@ -367,6 +423,12 @@ function NewsSourcesPage() {
                             />
                           </TableCell>
                           <TableCell className="font-medium">{sig.company_name ?? "—"}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {sig.raw_data?.country ?? "—"}
+                          </TableCell>
+                          <TableCell className="max-w-xs text-sm text-muted-foreground">
+                            {sig.raw_data?.company_description ?? "—"}
+                          </TableCell>
                           <TableCell className="max-w-sm text-sm text-muted-foreground">
                             {sig.signal_url ? (
                               <a
