@@ -66,6 +66,28 @@ type DiscoverySignal = {
   } | null;
 };
 
+type RunOutcome = "completed" | "failed" | "timeout";
+
+// Polls a discovery run until it finishes. A failed poll is treated as transient.
+async function waitForRun(runId: string | undefined, timeoutMs = 120_000): Promise<RunOutcome> {
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  if (!runId) {
+    await sleep(8000);
+    return "completed";
+  }
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    await sleep(2000);
+    try {
+      const status = (await api.get(`/api/discovery/runs/${runId}`)).data?.status;
+      if (status === "completed" || status === "failed") return status;
+    } catch {
+      // keep polling
+    }
+  }
+  return "timeout";
+}
+
 function NewsSourcesPage() {
   const sources = useStore((s) => s.sources);
   const icp = useStore((s) => s.icp);
@@ -89,7 +111,7 @@ function NewsSourcesPage() {
         .get("/api/discovery/signals", { params: { status: "new", limit: 100 } })
         .then((r) => (r.data.data ?? []) as DiscoverySignal[]),
   });
-  const newSignals = signalsData ?? [];
+  const newSignals = useMemo(() => signalsData ?? [], [signalsData]);
   const sortedSignals = useMemo(() => {
     if (!typeSort) return newSignals;
     const dir = typeSort === "asc" ? 1 : -1;
@@ -151,19 +173,26 @@ function NewsSourcesPage() {
     onError: () => toast.error("Failed to dismiss signal"),
   });
 
+  // The scan endpoint returns as soon as the run is queued, so the mutation stays pending
+  // while we poll the run until it finishes. That keeps the loading state accurate.
   const scanMutation = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
       const enabledSources = sources
         .filter((s) => s.enabled)
         .map((s) => s.name.toLowerCase().replace(/\s+/g, ""));
-      return api.post("/api/discovery/scan", { sources: enabledSources });
+      const res = await api.post("/api/discovery/scan", { sources: enabledSources });
+      return waitForRun(res.data?.id);
     },
-    onSuccess: () => {
-      toast.success("Signal scan started — results will appear shortly");
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ["leads"] });
-        queryClient.invalidateQueries({ queryKey: ["signals"] });
-      }, 8000);
+    onSuccess: (outcome) => {
+      if (outcome === "timeout") {
+        toast.info("The scan is taking longer than usual — refresh in a moment to see results");
+      } else if (outcome === "failed") {
+        toast.error("Scan failed — check backend logs");
+      } else {
+        toast.success("Signal scan complete");
+      }
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+      queryClient.invalidateQueries({ queryKey: ["signals"] });
     },
     onError: () => toast.error("Scan failed — check backend connection"),
   });
@@ -238,8 +267,12 @@ function NewsSourcesPage() {
         }
         primaryAction={
           <Button size="sm" onClick={() => scanMutation.mutate()} disabled={scanMutation.isPending}>
-            <Play className="mr-1.5 h-4 w-4" />
-            {scanMutation.isPending ? "Scanning..." : "Run signal scan"}
+            {scanMutation.isPending ? (
+              <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+            ) : (
+              <Play className="mr-1.5 h-4 w-4" />
+            )}
+            {scanMutation.isPending ? "Scanning…" : "Run signal scan"}
           </Button>
         }
       >
@@ -328,10 +361,24 @@ function NewsSourcesPage() {
             )}
           </div>
 
+          {scanMutation.isPending && (
+            <div
+              role="status"
+              className="mb-3 flex items-center gap-2 rounded-md border border-brand-turquoise/30 bg-brand-turquoise/10 p-3 text-sm"
+            >
+              <Loader2 className="h-4 w-4 shrink-0 animate-spin text-brand-turquoise" />
+              Scanning news sources — new results will appear here when it finishes.
+            </div>
+          )}
+
           {signalsLoading ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">Loading signals…</p>
+            <p className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" /> Loading signals…
+            </p>
           ) : newSignals.length === 0 ? (
-            <EmptyState icon={Zap} message="No new signals. Run a scan to pull fresh results." />
+            scanMutation.isPending ? null : (
+              <EmptyState icon={Zap} message="No new signals. Run a scan to pull fresh results." />
+            )
           ) : (
             <div className="space-y-3">
               <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/20 p-3">
@@ -535,7 +582,9 @@ function NewsSourcesPage() {
         }
       >
         {leadsLoading ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">Loading leads…</p>
+          <p className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" /> Loading leads…
+          </p>
         ) : filteredLeads.length === 0 ? (
           <EmptyState icon={Radar} message="No leads yet. Configure your sources and run a scan." />
         ) : (
