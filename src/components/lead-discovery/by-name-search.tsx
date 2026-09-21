@@ -220,7 +220,7 @@ export function ByNameSearch() {
 
   return (
     <CollapsibleSection
-      eyebrow="Option 4"
+      eyebrow="Option 3"
       title="By name LinkedIn outreach"
       description="Search for one or more specific people on LinkedIn, send connection requests, and run the whole outreach funnel through to email escalation — all in one place."
     >
@@ -437,7 +437,7 @@ export function ByNameSearch() {
           </div>
         )}
 
-        {/* The rest of the Option 4 funnel — all one box, one fold */}
+        {/* The rest of the Option 3 funnel — all one box, one fold */}
         <div className="border-t pt-6">
           <NameSearchLeads />
         </div>

@@ -66,7 +66,7 @@ type State = {
   prospects: Prospect[];
   engagement: EngagementPost[];
   sequences: SequenceRow[];
-  // Custom "Purpose of contact" reasons typed into Option 4's dropdown,
+  // Custom "Purpose of contact" reasons typed into Option 3's dropdown,
   // remembered so they show up as options on future searches.
   customContactPurposes: string[];
 };

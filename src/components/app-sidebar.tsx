@@ -10,10 +10,25 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
 
-const items = [
-  { title: "Lead Discovery", url: "/lead-discovery", icon: Radar },
+type NavItem = {
+  title: string;
+  url: string;
+  icon: typeof Radar;
+  children?: { title: string; url: string }[];
+};
+
+const items: NavItem[] = [
+  {
+    title: "Lead Discovery",
+    url: "/lead-discovery",
+    icon: Radar,
+    children: [{ title: "By news sources", url: "/lead-discovery/news-sources" }],
+  },
   { title: "Email Outreach", url: "/email-outreach", icon: Mail },
   { title: "Campaign Monitor", url: "/sequence-monitor", icon: Activity },
 ];
@@ -40,7 +55,11 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {items.map((item) => {
-                const active = pathname.startsWith(item.url);
+                // A parent with sub-items is only active on its own page; the sub-item
+                // highlights itself.
+                const active = item.children
+                  ? pathname === item.url
+                  : pathname.startsWith(item.url);
                 return (
                   <SidebarMenuItem key={item.url}>
                     <SidebarMenuButton asChild isActive={active} className="h-10">
@@ -49,6 +68,19 @@ export function AppSidebar() {
                         <span className="text-sm">{item.title}</span>
                       </Link>
                     </SidebarMenuButton>
+                    {item.children && (
+                      <SidebarMenuSub>
+                        {item.children.map((child) => (
+                          <SidebarMenuSubItem key={child.url}>
+                            <SidebarMenuSubButton asChild isActive={pathname === child.url}>
+                              <Link to={child.url}>
+                                <span>{child.title}</span>
+                              </Link>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        ))}
+                      </SidebarMenuSub>
+                    )}
                   </SidebarMenuItem>
                 );
               })}

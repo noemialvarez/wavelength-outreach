@@ -33,7 +33,7 @@ const statusTones: Record<string, "turquoise" | "pink" | "blue" | "muted"> = {
 };
 
 // Self-contained — deliberately doesn't reuse the shared Leads Results table:
-// leads found via Option 4 are already the named target person, so unlike
+// leads found via Option 3 are already the named target person, so unlike
 // the other sections there's no "Find founder" or Apollo email lookup here.
 export function NameSearchLeads() {
   const queryClient = useQueryClient();

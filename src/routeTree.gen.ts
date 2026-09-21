@@ -15,6 +15,7 @@ import { Route as AppSequenceMonitorRouteImport } from './routes/_app.sequence-m
 import { Route as AppProspectEngagementRouteImport } from './routes/_app.prospect-engagement'
 import { Route as AppLeadDiscoveryRouteImport } from './routes/_app.lead-discovery'
 import { Route as AppEmailOutreachRouteImport } from './routes/_app.email-outreach'
+import { Route as AppLeadDiscoveryNewsSourcesRouteImport } from './routes/_app.lead-discovery_.news-sources'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -45,6 +46,12 @@ const AppEmailOutreachRoute = AppEmailOutreachRouteImport.update({
   path: '/email-outreach',
   getParentRoute: () => AppRoute,
 } as any)
+const AppLeadDiscoveryNewsSourcesRoute =
+  AppLeadDiscoveryNewsSourcesRouteImport.update({
+    id: '/lead-discovery_/news-sources',
+    path: '/lead-discovery/news-sources',
+    getParentRoute: () => AppRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -52,6 +59,7 @@ export interface FileRoutesByFullPath {
   '/lead-discovery': typeof AppLeadDiscoveryRoute
   '/prospect-engagement': typeof AppProspectEngagementRoute
   '/sequence-monitor': typeof AppSequenceMonitorRoute
+  '/lead-discovery/news-sources': typeof AppLeadDiscoveryNewsSourcesRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -59,6 +67,7 @@ export interface FileRoutesByTo {
   '/lead-discovery': typeof AppLeadDiscoveryRoute
   '/prospect-engagement': typeof AppProspectEngagementRoute
   '/sequence-monitor': typeof AppSequenceMonitorRoute
+  '/lead-discovery/news-sources': typeof AppLeadDiscoveryNewsSourcesRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -68,6 +77,7 @@ export interface FileRoutesById {
   '/_app/lead-discovery': typeof AppLeadDiscoveryRoute
   '/_app/prospect-engagement': typeof AppProspectEngagementRoute
   '/_app/sequence-monitor': typeof AppSequenceMonitorRoute
+  '/_app/lead-discovery_/news-sources': typeof AppLeadDiscoveryNewsSourcesRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -77,6 +87,7 @@ export interface FileRouteTypes {
     | '/lead-discovery'
     | '/prospect-engagement'
     | '/sequence-monitor'
+    | '/lead-discovery/news-sources'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -84,6 +95,7 @@ export interface FileRouteTypes {
     | '/lead-discovery'
     | '/prospect-engagement'
     | '/sequence-monitor'
+    | '/lead-discovery/news-sources'
   id:
     | '__root__'
     | '/'
@@ -92,6 +104,7 @@ export interface FileRouteTypes {
     | '/_app/lead-discovery'
     | '/_app/prospect-engagement'
     | '/_app/sequence-monitor'
+    | '/_app/lead-discovery_/news-sources'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -143,6 +156,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppEmailOutreachRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/lead-discovery_/news-sources': {
+      id: '/_app/lead-discovery_/news-sources'
+      path: '/lead-discovery/news-sources'
+      fullPath: '/lead-discovery/news-sources'
+      preLoaderRoute: typeof AppLeadDiscoveryNewsSourcesRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
@@ -151,6 +171,7 @@ interface AppRouteChildren {
   AppLeadDiscoveryRoute: typeof AppLeadDiscoveryRoute
   AppProspectEngagementRoute: typeof AppProspectEngagementRoute
   AppSequenceMonitorRoute: typeof AppSequenceMonitorRoute
+  AppLeadDiscoveryNewsSourcesRoute: typeof AppLeadDiscoveryNewsSourcesRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -158,6 +179,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppLeadDiscoveryRoute: AppLeadDiscoveryRoute,
   AppProspectEngagementRoute: AppProspectEngagementRoute,
   AppSequenceMonitorRoute: AppSequenceMonitorRoute,
+  AppLeadDiscoveryNewsSourcesRoute: AppLeadDiscoveryNewsSourcesRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

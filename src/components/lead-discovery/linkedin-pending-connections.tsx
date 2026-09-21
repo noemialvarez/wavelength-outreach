@@ -19,7 +19,7 @@ type PendingConnection = {
   linkedin_connection_requested_at?: string;
 };
 
-// Plain content block, composed inside ByNameSearch's single Option 4 box
+// Plain content block, composed inside ByNameSearch's single Option 3 box
 // alongside the rest of the LinkedIn outreach funnel.
 export function LinkedinPendingConnections() {
   const { data: leads = [], isLoading } = useQuery<PendingConnection[]>({
