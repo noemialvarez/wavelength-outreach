@@ -1,7 +1,18 @@
-import { useState } from "react";
-import { ChevronDown, ChevronUp, Loader2, Mail, Search, Trash2, UserSearch } from "lucide-react";
+import { useMemo, useState } from "react";
+import {
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Loader2,
+  Mail,
+  RefreshCw,
+  Search,
+  Trash2,
+  UserSearch,
+  Users,
+} from "lucide-react";
 import { toast } from "sonner";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -16,6 +27,8 @@ import {
 import { StatusBadge } from "@/components/status-badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { SignalType, LeadStatus } from "@/lib/store";
+import { errorMessage, type Contact } from "@/lib/contacts";
+import { ConnectionCell } from "@/components/lead-discovery/connection-cell";
 import api from "@/lib/api";
 
 export type LeadRow = {
@@ -48,13 +61,20 @@ const statusTones: Record<LeadStatus, "turquoise" | "pink" | "blue" | "muted"> =
 
 const sectionTone = "bg-brand-turquoise/15 text-brand-turquoise border-brand-turquoise/30";
 
-// Per-lead actions (status, delete, email, founder lookup, batch lookup) shared by every
-// lead group on a page. Call once per page and pass the result to each <LeadGroup>.
+type SelectResponse = {
+  contact: Contact;
+  request: { sent: boolean; reason?: "already_connected" | "already_requested"; error?: string };
+};
+
+// Per-lead actions (status, delete, email, founder/team lookup, batch lookup, selecting
+// people) shared by every lead group on a page. Call once per page and pass the result to
+// each <LeadGroup>.
 export function useLeadActions() {
   const queryClient = useQueryClient();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [localEmails, setLocalEmails] = useState<Record<string, string>>({});
   const [batchLookupIds, setBatchLookupIds] = useState<Set<string>>(new Set());
+  const [teamLookupIds, setTeamLookupIds] = useState<Set<string>>(new Set());
 
   const updateStatusMutation = useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) =>
@@ -68,6 +88,7 @@ export function useLeadActions() {
     onSuccess: () => {
       toast.success("Lead deleted");
       queryClient.invalidateQueries({ queryKey: ["leads"] });
+      queryClient.invalidateQueries({ queryKey: ["contacts"] });
     },
     onError: () => toast.error("Failed to delete lead"),
   });
@@ -91,12 +112,7 @@ export function useLeadActions() {
         toast.info("No email found for this lead on Apollo");
       }
     },
-    onError: (err: unknown) => {
-      const msg =
-        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
-        "Apollo lookup failed";
-      toast.error(msg);
-    },
+    onError: (err: unknown) => toast.error(errorMessage(err, "Apollo lookup failed")),
   });
 
   const findFounderMutation = useMutation({
@@ -112,12 +128,90 @@ export function useLeadActions() {
         toast.info("No founder found on LinkedIn for this company");
       }
     },
-    onError: (err: unknown) => {
-      const msg =
-        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
-        "Founder search failed";
-      toast.error(msg);
+    onError: (err: unknown) => toast.error(errorMessage(err, "Founder search failed")),
+  });
+
+  // --- People at each company (founders + executive team) ---
+
+  const { data: contacts = [] } = useQuery({
+    queryKey: ["contacts"],
+    queryFn: () => api.get("/api/contacts").then((r) => (r.data.data ?? []) as Contact[]),
+  });
+  const peopleByLead = useMemo(() => {
+    const map = new Map<string, Contact[]>();
+    for (const c of contacts) {
+      if (c.kind !== "person") continue;
+      map.set(c.lead_id, [...(map.get(c.lead_id) ?? []), c]);
+    }
+    return map;
+  }, [contacts]);
+
+  // One lead at a time: each lookup is a LinkedIn search through Phantombuster.
+  const runFindTeam = async (leadIds: string[]) => {
+    if (leadIds.length === 0 || teamLookupIds.size > 0) return;
+    setTeamLookupIds(new Set(leadIds));
+    let people = 0;
+    let errors = 0;
+    let connectionsUnavailable = false;
+
+    for (const id of leadIds) {
+      try {
+        const r = await api.post("/api/contacts/find-team", { lead_id: id });
+        people += r.data.contacts?.length ?? 0;
+        if (r.data.connections_available === false) connectionsUnavailable = true;
+      } catch {
+        errors++;
+      }
+      setTeamLookupIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+      queryClient.invalidateQueries({ queryKey: ["contacts"] });
+    }
+
+    const summary = `${people} ${people === 1 ? "person" : "people"} found${errors ? `, ${errors} search${errors === 1 ? "" : "es"} failed` : ""}`;
+    if (people === 0 && errors) toast.error(`Team search failed — check backend connection`);
+    else toast.success(summary);
+    if (connectionsUnavailable) {
+      toast.info(
+        "Connection status couldn't be verified — the LinkedIn Connections Export agent isn't set up or returned nothing",
+      );
+    }
+  };
+
+  const checkConnectionsMutation = useMutation({
+    mutationFn: (leadIds: string[]) =>
+      api
+        .post("/api/contacts/check-connections", { refresh: true, lead_ids: leadIds })
+        .then((r) => r.data as { checked: number; connections_available: boolean }),
+    onSuccess: (d) => {
+      queryClient.invalidateQueries({ queryKey: ["contacts"] });
+      if (d.connections_available) toast.success(`Connections refreshed for ${d.checked} people`);
+      else toast.info("Couldn't verify connections — the Connections Export agent isn't available");
     },
+    onError: (err: unknown) => toast.error(errorMessage(err, "Connection check failed")),
+  });
+
+  // Selecting a person approves their lead and sends a LinkedIn connection request
+  // (skipped when already connected or already requested).
+  const selectContactMutation = useMutation({
+    mutationFn: (id: string) =>
+      api.post(`/api/contacts/${id}/select`).then((r) => r.data as SelectResponse),
+    onSuccess: ({ contact, request }) => {
+      queryClient.invalidateQueries({ queryKey: ["contacts"] });
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+      if (request.sent) toast.success(`Connection request sent to ${contact.name}`);
+      else if (request.reason === "already_connected")
+        toast.success(`${contact.name} selected — already connected`);
+      else if (request.reason === "already_requested")
+        toast.info(`${contact.name} selected — a connection request was already sent`);
+      else
+        toast.error(
+          `${contact.name} selected, but the connection request failed: ${request.error ?? "unknown error"}`,
+        );
+    },
+    onError: (err: unknown) => toast.error(errorMessage(err, "Failed to select")),
   });
 
   const toggleSelect = (id: string) => {
@@ -204,12 +298,16 @@ export function useLeadActions() {
     setLocalEmails,
     batchLookupIds,
     runBatchLookup,
+    teamLookupIds,
+    runFindTeam,
+    peopleByLead,
+    checkConnectionsMutation,
+    selectContactMutation,
     updateStatusMutation,
     deleteLeadMutation,
     updateEmailMutation,
     findEmailMutation,
     findFounderMutation,
-    setLeadStatus: (id: string, status: LeadStatus) => updateStatusMutation.mutate({ id, status }),
     bulkSetIds,
     bulkDeleteIds,
   };
@@ -224,11 +322,15 @@ function LeadTable({ items, actions }: { items: LeadRow[]; actions: LeadActions 
     localEmails,
     setLocalEmails,
     batchLookupIds,
+    teamLookupIds,
+    runFindTeam,
+    peopleByLead,
+    selectContactMutation,
     updateEmailMutation,
     findEmailMutation,
     findFounderMutation,
     deleteLeadMutation,
-    setLeadStatus,
+    updateStatusMutation,
   } = actions;
 
   return (
@@ -240,152 +342,233 @@ function LeadTable({ items, actions }: { items: LeadRow[]; actions: LeadActions 
             <TableHead>Company</TableHead>
             <TableHead>Signal</TableHead>
             <TableHead>Type</TableHead>
-            <TableHead>Founder</TableHead>
-            <TableHead>Email</TableHead>
+            <TableHead>Founders &amp; team</TableHead>
+            <TableHead>Connection</TableHead>
             <TableHead>LinkedIn</TableHead>
+            <TableHead></TableHead>
+            <TableHead>Email</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Date</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {items.map((l) => (
-            <TableRow key={l.id}>
-              <TableCell>
-                <Checkbox checked={selected.has(l.id)} onCheckedChange={() => toggleSelect(l.id)} />
-              </TableCell>
-              <TableCell className="font-medium">{l.company}</TableCell>
-              <TableCell className="max-w-xs text-sm text-muted-foreground">{l.notes}</TableCell>
-              <TableCell>
-                {l.signalType && (
-                  <StatusBadge label={l.signalType} tone={signalTones[l.signalType] ?? "muted"} />
+          {items.map((l) => {
+            const people = peopleByLead.get(l.id) ?? [];
+            const rows: (Contact | null)[] = people.length ? people : [null];
+            const span = rows.length;
+            const findingFounder =
+              (findFounderMutation.isPending && findFounderMutation.variables === l.id) ||
+              batchLookupIds.has(l.id);
+            const findingTeam = teamLookupIds.has(l.id);
+
+            return rows.map((p, i) => (
+              <TableRow key={`${l.id}-${p?.id ?? "none"}`}>
+                {i === 0 && (
+                  <>
+                    <TableCell rowSpan={span}>
+                      <Checkbox
+                        checked={selected.has(l.id)}
+                        onCheckedChange={() => toggleSelect(l.id)}
+                      />
+                    </TableCell>
+                    <TableCell rowSpan={span} className="font-medium">
+                      {l.company}
+                    </TableCell>
+                    <TableCell rowSpan={span} className="max-w-xs text-sm text-muted-foreground">
+                      {l.notes}
+                    </TableCell>
+                    <TableCell rowSpan={span}>
+                      {l.signalType && (
+                        <StatusBadge
+                          label={l.signalType}
+                          tone={signalTones[l.signalType] ?? "muted"}
+                        />
+                      )}
+                    </TableCell>
+                  </>
                 )}
-              </TableCell>
-              <TableCell>
-                <div className="font-medium">{l.name}</div>
-                {l.role && <div className="text-xs text-muted-foreground">{l.role}</div>}
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center gap-1">
-                  <Input
-                    className="h-7 w-40 text-sm"
-                    placeholder="founder@co.com"
-                    value={localEmails[l.id] ?? l.email ?? ""}
-                    onChange={(e) =>
-                      setLocalEmails((prev) => ({ ...prev, [l.id]: e.target.value }))
-                    }
-                    onBlur={() => {
-                      const val = localEmails[l.id];
-                      if (val !== undefined && val !== (l.email ?? "")) {
-                        updateEmailMutation.mutate({ id: l.id, email: val });
-                      }
-                    }}
-                  />
-                  {l.enrichment_data?.email_source === "apollo" && (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Mail className="h-3.5 w-3.5 shrink-0 text-brand-blue" />
-                        </TooltipTrigger>
-                        <TooltipContent>Email found via Apollo</TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+
+                {/* One row per founder / executive */}
+                <TableCell>
+                  <div className="font-medium">{p ? p.name : l.name}</div>
+                  {(p ? p.role : l.role) && (
+                    <div className="text-xs text-muted-foreground">{p ? p.role : l.role}</div>
                   )}
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
-                    title="Look up email via Apollo"
-                    onClick={() => findEmailMutation.mutate(l.id)}
-                    disabled={
-                      (findEmailMutation.isPending && findEmailMutation.variables === l.id) ||
-                      batchLookupIds.has(l.id)
-                    }
-                  >
-                    {(findEmailMutation.isPending && findEmailMutation.variables === l.id) ||
-                    batchLookupIds.has(l.id) ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Search className="h-3.5 w-3.5" />
-                    )}
-                  </Button>
-                </div>
-              </TableCell>
-              <TableCell>
-                {l.linkedin_url && (
-                  <a
-                    href={l.linkedin_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-sm text-brand-blue hover:underline"
-                  >
-                    View
-                  </a>
-                )}
-              </TableCell>
-              <TableCell>
-                <StatusBadge
-                  label={l.status}
-                  tone={statusTones[l.status as LeadStatus] ?? "muted"}
-                />
-              </TableCell>
-              <TableCell className="text-sm text-muted-foreground">
-                {l.created_at?.slice(0, 10)}
-              </TableCell>
-              <TableCell className="text-right">
-                <div className="flex justify-end gap-1.5">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    title="Find founder via LinkedIn"
-                    onClick={() => findFounderMutation.mutate(l.id)}
-                    disabled={
-                      (findFounderMutation.isPending && findFounderMutation.variables === l.id) ||
-                      batchLookupIds.has(l.id)
-                    }
-                  >
-                    {(findFounderMutation.isPending && findFounderMutation.variables === l.id) ||
-                    batchLookupIds.has(l.id) ? (
-                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <UserSearch className="mr-1.5 h-3.5 w-3.5" />
-                    )}
-                    Find founder
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
-                    onClick={() => setLeadStatus(l.id, "Approved")}
-                    disabled={l.status === "Approved" || l.status === "Pushed"}
-                  >
-                    Approve
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => setLeadStatus(l.id, "Skipped")}>
-                    Skip
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="text-muted-foreground hover:text-destructive"
-                    title="Delete lead"
-                    onClick={() => {
-                      if (confirm(`Delete lead "${l.company}"?`)) {
-                        deleteLeadMutation.mutate(l.id);
+                  {!p && (
+                    <div className="text-xs text-muted-foreground/70">
+                      Use “Find team” to list the founders and executives
+                    </div>
+                  )}
+                </TableCell>
+                <TableCell>{p ? <ConnectionCell contact={p} /> : "—"}</TableCell>
+                <TableCell>
+                  {(p ? p.linkedin_url : l.linkedin_url) && (
+                    <a
+                      href={(p ? p.linkedin_url : l.linkedin_url) ?? undefined}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-sm text-brand-blue hover:underline"
+                    >
+                      View
+                    </a>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {p && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
+                      title={
+                        p.selected
+                          ? "Selected"
+                          : "Select — sends a LinkedIn connection request unless you're already connected"
                       }
-                    }}
-                    disabled={deleteLeadMutation.isPending && deleteLeadMutation.variables === l.id}
-                  >
-                    {deleteLeadMutation.isPending && deleteLeadMutation.variables === l.id ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Trash2 className="h-3.5 w-3.5" />
-                    )}
-                  </Button>
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
+                      disabled={
+                        p.selected ||
+                        (selectContactMutation.isPending &&
+                          selectContactMutation.variables === p.id)
+                      }
+                      onClick={() => selectContactMutation.mutate(p.id)}
+                    >
+                      {selectContactMutation.isPending &&
+                      selectContactMutation.variables === p.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : p.selected ? (
+                        <>
+                          <Check className="mr-1 h-3.5 w-3.5" /> Selected
+                        </>
+                      ) : (
+                        "Select"
+                      )}
+                    </Button>
+                  )}
+                </TableCell>
+
+                {i === 0 && (
+                  <>
+                    <TableCell rowSpan={span}>
+                      <div className="flex items-center gap-1">
+                        <Input
+                          className="h-7 w-40 text-sm"
+                          placeholder="founder@co.com"
+                          value={localEmails[l.id] ?? l.email ?? ""}
+                          onChange={(e) =>
+                            setLocalEmails((prev) => ({ ...prev, [l.id]: e.target.value }))
+                          }
+                          onBlur={() => {
+                            const val = localEmails[l.id];
+                            if (val !== undefined && val !== (l.email ?? "")) {
+                              updateEmailMutation.mutate({ id: l.id, email: val });
+                            }
+                          }}
+                        />
+                        {l.enrichment_data?.email_source === "apollo" && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Mail className="h-3.5 w-3.5 shrink-0 text-brand-blue" />
+                              </TooltipTrigger>
+                              <TooltipContent>Email found via Apollo</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
+                          title="Look up email via Apollo"
+                          onClick={() => findEmailMutation.mutate(l.id)}
+                          disabled={
+                            (findEmailMutation.isPending && findEmailMutation.variables === l.id) ||
+                            batchLookupIds.has(l.id)
+                          }
+                        >
+                          {(findEmailMutation.isPending && findEmailMutation.variables === l.id) ||
+                          batchLookupIds.has(l.id) ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Search className="h-3.5 w-3.5" />
+                          )}
+                        </Button>
+                      </div>
+                    </TableCell>
+                    <TableCell rowSpan={span}>
+                      <StatusBadge
+                        label={l.status}
+                        tone={statusTones[l.status as LeadStatus] ?? "muted"}
+                      />
+                    </TableCell>
+                    <TableCell rowSpan={span} className="text-sm text-muted-foreground">
+                      {l.created_at?.slice(0, 10)}
+                    </TableCell>
+                    <TableCell rowSpan={span} className="text-right">
+                      <div className="flex justify-end gap-1.5">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          title="Find the founders and executive team on LinkedIn"
+                          onClick={() => runFindTeam([l.id])}
+                          disabled={teamLookupIds.size > 0}
+                        >
+                          {findingTeam ? (
+                            <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Users className="mr-1.5 h-3.5 w-3.5" />
+                          )}
+                          Find team
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          title="Find founder via LinkedIn"
+                          onClick={() => findFounderMutation.mutate(l.id)}
+                          disabled={findingFounder}
+                        >
+                          {findingFounder ? (
+                            <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <UserSearch className="mr-1.5 h-3.5 w-3.5" />
+                          )}
+                          Find founder
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() =>
+                            updateStatusMutation.mutate({ id: l.id, status: "Skipped" })
+                          }
+                        >
+                          Skip
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="text-muted-foreground hover:text-destructive"
+                          title="Delete lead"
+                          onClick={() => {
+                            if (confirm(`Delete lead "${l.company}"?`)) {
+                              deleteLeadMutation.mutate(l.id);
+                            }
+                          }}
+                          disabled={
+                            deleteLeadMutation.isPending && deleteLeadMutation.variables === l.id
+                          }
+                        >
+                          {deleteLeadMutation.isPending && deleteLeadMutation.variables === l.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-3.5 w-3.5" />
+                          )}
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </>
+                )}
+              </TableRow>
+            ));
+          })}
         </TableBody>
       </Table>
     </div>
@@ -406,8 +589,17 @@ export function LeadGroup({
   collapsed: boolean;
   onToggleCollapsed: () => void;
 }) {
-  const { selected, setSelected, batchLookupIds, runBatchLookup, bulkSetIds, bulkDeleteIds } =
-    actions;
+  const {
+    selected,
+    setSelected,
+    batchLookupIds,
+    runBatchLookup,
+    teamLookupIds,
+    runFindTeam,
+    checkConnectionsMutation,
+    bulkSetIds,
+    bulkDeleteIds,
+  } = actions;
   const groupSelected = items.filter((l) => selected.has(l.id)).map((l) => l.id);
   const allSelected = groupSelected.length === items.length;
   const toggleAll = () => {
@@ -476,6 +668,39 @@ export function LeadGroup({
                   Find founders & emails
                 </>
               )}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-brand-blue/40 text-brand-blue hover:bg-brand-blue/10"
+              disabled={groupSelected.length === 0 || teamLookupIds.size > 0}
+              onClick={() => runFindTeam(groupSelected)}
+            >
+              {teamLookupIds.size > 0 ? (
+                <>
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                  Finding teams… ({teamLookupIds.size} left)
+                </>
+              ) : (
+                <>
+                  <Users className="mr-1.5 h-3.5 w-3.5" />
+                  Find teams
+                </>
+              )}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              title="Re-check which people you're connected to on LinkedIn"
+              disabled={checkConnectionsMutation.isPending}
+              onClick={() => checkConnectionsMutation.mutate(items.map((l) => l.id))}
+            >
+              {checkConnectionsMutation.isPending ? (
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+              )}
+              Refresh connections
             </Button>
             <Button
               size="sm"

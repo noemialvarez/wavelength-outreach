@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Radar, Mail, MessageCircle, Activity } from "lucide-react";
+import { Radar, Mail, MessageCircle, Activity, UserCheck } from "lucide-react";
 import logoUrl from "@/assets/logo.png";
 import {
   Sidebar,
@@ -29,6 +29,7 @@ const items: NavItem[] = [
     icon: Radar,
     children: [{ title: "By news sources", url: "/lead-discovery/news-sources" }],
   },
+  { title: "LinkedIn Engagement", url: "/linkedin-engagement", icon: UserCheck },
   { title: "Email Outreach", url: "/email-outreach", icon: Mail },
   { title: "Campaign Monitor", url: "/sequence-monitor", icon: Activity },
 ];
