@@ -163,11 +163,13 @@ export function useLeadActions() {
         people += r.data.contacts?.length ?? 0;
         unknownConnections += r.data.unknown_count ?? 0;
         // Say what the search did when it came back empty, instead of a bare "0 found".
-        const s = r.data.search as { searched_for: string; raw: number } | undefined;
+        const s = r.data.search as
+          | { searched_for: string; raw: number; phantom_output?: string }
+          | undefined;
         if (s && !(r.data.contacts?.length > 0)) {
           emptyReason =
             s.raw === 0
-              ? `LinkedIn returned no results for “${s.searched_for}”.`
+              ? `LinkedIn returned no results for “${s.searched_for}”.${s.phantom_output ? ` PhantomBuster reported: ${s.phantom_output}` : ""}`
               : `LinkedIn returned ${s.raw} result${s.raw === 1 ? "" : "s"} for “${s.searched_for}”, but none looked like a current founder or executive of that company.`;
         }
       } catch (err) {
