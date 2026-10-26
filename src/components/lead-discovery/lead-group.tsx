@@ -30,6 +30,7 @@ import type { SignalType, LeadStatus } from "@/lib/store";
 import { errorMessage, type Contact } from "@/lib/contacts";
 import { ConnectionCell } from "@/components/lead-discovery/connection-cell";
 import { StickyXScroll } from "@/components/sticky-x-scroll";
+import { AddPersonDialog } from "@/components/lead-discovery/add-person-dialog";
 import api from "@/lib/api";
 
 export type LeadRow = {
@@ -158,6 +159,7 @@ export function useLeadActions() {
     let apolloCredits = 0;
     let lastError = "";
     let emptyReason = "";
+    let recordNote = "";
 
     for (const id of leadIds) {
       try {
@@ -175,11 +177,22 @@ export function useLeadActions() {
               org_name?: string | null;
               org_candidates?: string[];
               credits_estimate?: number;
+              org_domain?: string | null;
+              org_matches?: number;
               from_cache?: boolean;
               tried?: { steps: { listed?: number; titles?: string[] }[] }[];
             }
           | undefined;
         if (s?.source === "apollo" && !s.from_cache) apolloCredits += s.credits_estimate ?? 0;
+        // Which Apollo company the people came from, so a same-name company can be spotted.
+        if (
+          s?.source === "apollo" &&
+          leadIds.length === 1 &&
+          s.org_name &&
+          r.data.contacts?.length > 0
+        ) {
+          recordNote = `People came from Apollo's “${s.org_name}”${s.org_domain ? ` (${s.org_domain})` : ""}.${(s.org_matches ?? 1) > 1 ? ` Apollo has ${s.org_matches} companies with this name, so check it's the right one before selecting anyone.` : ""}`;
+        }
         if (s && !(r.data.contacts?.length > 0)) {
           if (s.source === "apollo") {
             emptyReason = !s.org_found
@@ -225,6 +238,7 @@ export function useLeadActions() {
     else if (people === 0 && emptyReason)
       toast.info(`No people found. ${emptyReason}`, { duration: 20000 });
     else toast.success(summary);
+    if (recordNote) toast.info(recordNote, { duration: 15000 });
     if (unknownConnections > 0) {
       toast.info(
         `${unknownConnections} ${unknownConnections === 1 ? "connection" : "connections"} couldn't be confirmed from the search. Click “Refresh connections” to check them against your LinkedIn connections list.`,
@@ -580,6 +594,7 @@ function LeadTable({ items, actions }: { items: LeadRow[]; actions: LeadActions 
                           )}
                           Find team
                         </Button>
+                        <AddPersonDialog leadId={l.id} company={l.company} />
                         <Button
                           size="sm"
                           variant="outline"
