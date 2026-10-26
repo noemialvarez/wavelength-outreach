@@ -413,17 +413,13 @@ function LeadTable({ items, actions }: { items: LeadRow[]; actions: LeadActions 
       <Table containerClassName="overflow-visible">
         <TableHeader>
           <TableRow>
-            <TableHead className="w-10"></TableHead>
+            <TableHead className="w-8"></TableHead>
             <TableHead>Company</TableHead>
             <TableHead>Signal</TableHead>
             <TableHead>Type</TableHead>
             <TableHead>Founders &amp; team</TableHead>
             <TableHead>Connection</TableHead>
-            <TableHead>LinkedIn</TableHead>
-            <TableHead></TableHead>
             <TableHead>Email</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Date</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -437,213 +433,238 @@ function LeadTable({ items, actions }: { items: LeadRow[]; actions: LeadActions 
               batchLookupIds.has(l.id);
             const findingTeam = teamLookupIds.has(l.id);
 
-            return rows.map((p, i) => (
-              <TableRow key={`${l.id}-${p?.id ?? "none"}`}>
-                {i === 0 && (
-                  <>
-                    <TableCell rowSpan={span}>
-                      <Checkbox
-                        checked={selected.has(l.id)}
-                        onCheckedChange={() => toggleSelect(l.id)}
-                      />
-                    </TableCell>
-                    <TableCell rowSpan={span} className="font-medium">
-                      {l.company}
-                    </TableCell>
-                    <TableCell rowSpan={span} className="max-w-xs text-sm text-muted-foreground">
-                      {l.notes}
-                    </TableCell>
-                    <TableCell rowSpan={span}>
-                      {l.signalType && (
-                        <StatusBadge
-                          label={l.signalType}
-                          tone={signalTones[l.signalType] ?? "muted"}
+            return rows.map((p, i) => {
+              const profileUrl = p ? p.linkedin_url : l.linkedin_url;
+              return (
+                <TableRow key={`${l.id}-${p?.id ?? "none"}`}>
+                  {i === 0 && (
+                    <>
+                      <TableCell rowSpan={span} className="align-top">
+                        <Checkbox
+                          checked={selected.has(l.id)}
+                          onCheckedChange={() => toggleSelect(l.id)}
                         />
-                      )}
-                    </TableCell>
-                  </>
-                )}
-
-                {/* One row per founder / executive */}
-                <TableCell>
-                  <div className="font-medium">{p ? p.name : l.name}</div>
-                  {(p ? p.role : l.role) && (
-                    <div className="text-xs text-muted-foreground">{p ? p.role : l.role}</div>
-                  )}
-                  {!p && (
-                    <div className="text-xs text-muted-foreground/70">
-                      Use “Find team” to list the founders and executives
-                    </div>
-                  )}
-                </TableCell>
-                <TableCell>{p ? <ConnectionCell contact={p} /> : "—"}</TableCell>
-                <TableCell>
-                  {(p ? p.linkedin_url : l.linkedin_url) && (
-                    <a
-                      href={(p ? p.linkedin_url : l.linkedin_url) ?? undefined}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-sm text-brand-blue hover:underline"
-                    >
-                      View
-                    </a>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {p && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
-                      title={
-                        p.selected
-                          ? "Selected"
-                          : "Select — sends a LinkedIn connection request unless you're already connected"
-                      }
-                      disabled={
-                        p.selected ||
-                        (selectContactMutation.isPending &&
-                          selectContactMutation.variables === p.id)
-                      }
-                      onClick={() => selectContactMutation.mutate(p.id)}
-                    >
-                      {selectContactMutation.isPending &&
-                      selectContactMutation.variables === p.id ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : p.selected ? (
-                        <>
-                          <Check className="mr-1 h-3.5 w-3.5" /> Selected
-                        </>
-                      ) : (
-                        "Select"
-                      )}
-                    </Button>
-                  )}
-                </TableCell>
-
-                {i === 0 && (
-                  <>
-                    <TableCell rowSpan={span}>
-                      <div className="flex items-center gap-1">
-                        <Input
-                          className="h-7 w-40 text-sm"
-                          placeholder="founder@co.com"
-                          value={localEmails[l.id] ?? l.email ?? ""}
-                          onChange={(e) =>
-                            setLocalEmails((prev) => ({ ...prev, [l.id]: e.target.value }))
-                          }
-                          onBlur={() => {
-                            const val = localEmails[l.id];
-                            if (val !== undefined && val !== (l.email ?? "")) {
-                              updateEmailMutation.mutate({ id: l.id, email: val });
-                            }
-                          }}
-                        />
-                        {l.enrichment_data?.email_source === "apollo" && (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Mail className="h-3.5 w-3.5 shrink-0 text-brand-blue" />
-                              </TooltipTrigger>
-                              <TooltipContent>Email found via Apollo</TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
+                      </TableCell>
+                      {/* Company, with its status and date underneath instead of columns of their own */}
+                      <TableCell rowSpan={span} className="max-w-[150px] align-top">
+                        <div className="break-words font-medium">{l.company}</div>
+                        <div className="mt-1">
+                          <StatusBadge
+                            label={l.status}
+                            tone={statusTones[l.status as LeadStatus] ?? "muted"}
+                          />
+                        </div>
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          {l.created_at?.slice(0, 10)}
+                        </div>
+                      </TableCell>
+                      <TableCell
+                        rowSpan={span}
+                        className="max-w-[190px] align-top text-sm text-muted-foreground"
+                      >
+                        <div className="line-clamp-4" title={l.notes}>
+                          {l.notes}
+                        </div>
+                      </TableCell>
+                      <TableCell rowSpan={span} className="align-top">
+                        {l.signalType && (
+                          <StatusBadge
+                            label={l.signalType}
+                            tone={signalTones[l.signalType] ?? "muted"}
+                          />
                         )}
+                      </TableCell>
+                    </>
+                  )}
+
+                  {/* One row per founder / executive; the LinkedIn link sits under the name */}
+                  <TableCell className="min-w-[140px] max-w-[190px] align-top">
+                    <div className="break-words font-medium">{p ? p.name : l.name}</div>
+                    {(p ? p.role : l.role) && (
+                      <div className="text-xs text-muted-foreground">{p ? p.role : l.role}</div>
+                    )}
+                    {profileUrl && (
+                      <a
+                        href={profileUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-xs text-brand-blue hover:underline"
+                      >
+                        LinkedIn profile
+                      </a>
+                    )}
+                    {!p && (
+                      <div className="text-xs text-muted-foreground/70">
+                        Click “Find team” or “Add person”
+                      </div>
+                    )}
+                  </TableCell>
+                  {/* Connection, with the Select button under it */}
+                  <TableCell className="align-top">
+                    {p ? (
+                      <div className="flex flex-col items-start gap-1.5">
+                        <ConnectionCell contact={p} />
                         <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
-                          title="Look up email via Apollo"
-                          onClick={() => findEmailMutation.mutate(l.id)}
-                          disabled={
-                            (findEmailMutation.isPending && findEmailMutation.variables === l.id) ||
-                            batchLookupIds.has(l.id)
+                          size="sm"
+                          variant="outline"
+                          className="h-7 border-brand-turquoise/40 px-2 text-brand-turquoise hover:bg-brand-turquoise/10"
+                          title={
+                            p.selected
+                              ? "Selected"
+                              : "Select — sends a LinkedIn connection request unless you're already connected"
                           }
+                          disabled={
+                            p.selected ||
+                            (selectContactMutation.isPending &&
+                              selectContactMutation.variables === p.id)
+                          }
+                          onClick={() => selectContactMutation.mutate(p.id)}
                         >
-                          {(findEmailMutation.isPending && findEmailMutation.variables === l.id) ||
-                          batchLookupIds.has(l.id) ? (
+                          {selectContactMutation.isPending &&
+                          selectContactMutation.variables === p.id ? (
                             <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : p.selected ? (
+                            <>
+                              <Check className="mr-1 h-3.5 w-3.5" /> Selected
+                            </>
                           ) : (
-                            <Search className="h-3.5 w-3.5" />
+                            "Select"
                           )}
                         </Button>
                       </div>
-                    </TableCell>
-                    <TableCell rowSpan={span}>
-                      <StatusBadge
-                        label={l.status}
-                        tone={statusTones[l.status as LeadStatus] ?? "muted"}
-                      />
-                    </TableCell>
-                    <TableCell rowSpan={span} className="text-sm text-muted-foreground">
-                      {l.created_at?.slice(0, 10)}
-                    </TableCell>
-                    <TableCell rowSpan={span} className="text-right">
-                      <div className="flex justify-end gap-1.5">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          title="Find the founders and executive team on LinkedIn"
-                          onClick={() => runFindTeam([l.id])}
-                          disabled={teamLookupIds.size > 0}
-                        >
-                          {findingTeam ? (
-                            <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <Users className="mr-1.5 h-3.5 w-3.5" />
-                          )}
-                          Find team
-                        </Button>
-                        <AddPersonDialog leadId={l.id} company={l.company} />
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          title="Find founder via LinkedIn"
-                          onClick={() => findFounderMutation.mutate(l.id)}
-                          disabled={findingFounder}
-                        >
-                          {findingFounder ? (
-                            <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <UserSearch className="mr-1.5 h-3.5 w-3.5" />
-                          )}
-                          Find founder
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() =>
-                            updateStatusMutation.mutate({ id: l.id, status: "Skipped" })
-                          }
-                        >
-                          Skip
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="text-muted-foreground hover:text-destructive"
-                          title="Delete lead"
-                          onClick={() => {
-                            if (confirm(`Delete lead "${l.company}"?`)) {
-                              deleteLeadMutation.mutate(l.id);
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
+
+                  {i === 0 && (
+                    <>
+                      <TableCell rowSpan={span} className="align-top">
+                        <div className="flex items-center gap-1">
+                          <Input
+                            className="h-7 w-36 text-sm"
+                            placeholder="founder@co.com"
+                            value={localEmails[l.id] ?? l.email ?? ""}
+                            onChange={(e) =>
+                              setLocalEmails((prev) => ({ ...prev, [l.id]: e.target.value }))
                             }
-                          }}
-                          disabled={
-                            deleteLeadMutation.isPending && deleteLeadMutation.variables === l.id
-                          }
-                        >
-                          {deleteLeadMutation.isPending && deleteLeadMutation.variables === l.id ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-3.5 w-3.5" />
+                            onBlur={() => {
+                              const val = localEmails[l.id];
+                              if (val !== undefined && val !== (l.email ?? "")) {
+                                updateEmailMutation.mutate({ id: l.id, email: val });
+                              }
+                            }}
+                          />
+                          {l.enrichment_data?.email_source === "apollo" && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Mail className="h-3.5 w-3.5 shrink-0 text-brand-blue" />
+                                </TooltipTrigger>
+                                <TooltipContent>Email found via Apollo</TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
                           )}
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </>
-                )}
-              </TableRow>
-            ));
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
+                            title="Look up email via Apollo"
+                            onClick={() => findEmailMutation.mutate(l.id)}
+                            disabled={
+                              (findEmailMutation.isPending &&
+                                findEmailMutation.variables === l.id) ||
+                              batchLookupIds.has(l.id)
+                            }
+                          >
+                            {(findEmailMutation.isPending &&
+                              findEmailMutation.variables === l.id) ||
+                            batchLookupIds.has(l.id) ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Search className="h-3.5 w-3.5" />
+                            )}
+                          </Button>
+                        </div>
+                      </TableCell>
+                      {/* Actions stacked in a column instead of one wide row */}
+                      <TableCell rowSpan={span} className="align-top">
+                        <div className="flex w-[130px] flex-col items-stretch gap-1.5">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="justify-start"
+                            title="Find the founders and executive team"
+                            onClick={() => runFindTeam([l.id])}
+                            disabled={teamLookupIds.size > 0}
+                          >
+                            {findingTeam ? (
+                              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Users className="mr-1.5 h-3.5 w-3.5" />
+                            )}
+                            Find team
+                          </Button>
+                          <AddPersonDialog
+                            leadId={l.id}
+                            company={l.company}
+                            triggerClassName="w-full justify-start"
+                          />
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="justify-start"
+                            title="Find founder via LinkedIn"
+                            onClick={() => findFounderMutation.mutate(l.id)}
+                            disabled={findingFounder}
+                          >
+                            {findingFounder ? (
+                              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <UserSearch className="mr-1.5 h-3.5 w-3.5" />
+                            )}
+                            Find founder
+                          </Button>
+                          <div className="flex items-center justify-between">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() =>
+                                updateStatusMutation.mutate({ id: l.id, status: "Skipped" })
+                              }
+                            >
+                              Skip
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="text-muted-foreground hover:text-destructive"
+                              title="Delete lead"
+                              onClick={() => {
+                                if (confirm(`Delete lead "${l.company}"?`)) {
+                                  deleteLeadMutation.mutate(l.id);
+                                }
+                              }}
+                              disabled={
+                                deleteLeadMutation.isPending &&
+                                deleteLeadMutation.variables === l.id
+                              }
+                            >
+                              {deleteLeadMutation.isPending &&
+                              deleteLeadMutation.variables === l.id ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-3.5 w-3.5" />
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+                      </TableCell>
+                    </>
+                  )}
+                </TableRow>
+              );
+            });
           })}
         </TableBody>
       </Table>

@@ -19,7 +19,15 @@ import api from "@/lib/api";
 // Adds a founder / executive to a lead by pasting their LinkedIn profile link — for companies the
 // automatic lookup has no data on. Once added, the person behaves like any found one: Connection
 // check, Select (connection request), LinkedIn Engagement.
-export function AddPersonDialog({ leadId, company }: { leadId: string; company: string }) {
+export function AddPersonDialog({
+  leadId,
+  company,
+  triggerClassName,
+}: {
+  leadId: string;
+  company: string;
+  triggerClassName?: string;
+}) {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [url, setUrl] = useState("");
@@ -49,6 +57,7 @@ export function AddPersonDialog({ leadId, company }: { leadId: string; company: 
         <Button
           size="sm"
           variant="outline"
+          className={triggerClassName}
           title="Add a founder or executive by their LinkedIn link"
         >
           <UserPlus className="mr-1.5 h-3.5 w-3.5" />

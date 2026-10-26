@@ -450,7 +450,6 @@ function NewsSourcesPage() {
                         </button>
                       </TableHead>
                       <TableHead>Source</TableHead>
-                      <TableHead>Date</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -474,22 +473,29 @@ function NewsSourcesPage() {
                           <TableCell className="text-sm text-muted-foreground">
                             {sig.raw_data?.country ?? "—"}
                           </TableCell>
-                          <TableCell className="max-w-xs text-sm text-muted-foreground">
-                            {sig.raw_data?.company_description ?? "—"}
+                          <TableCell className="max-w-[220px] text-sm text-muted-foreground">
+                            <div
+                              className="line-clamp-3"
+                              title={sig.raw_data?.company_description ?? undefined}
+                            >
+                              {sig.raw_data?.company_description ?? "—"}
+                            </div>
                           </TableCell>
-                          <TableCell className="max-w-sm text-sm text-muted-foreground">
-                            {sig.signal_url ? (
-                              <a
-                                href={sig.signal_url}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="hover:underline"
-                              >
-                                {signalDesc ?? sig.signal_url}
-                              </a>
-                            ) : (
-                              (signalDesc ?? "—")
-                            )}
+                          <TableCell className="max-w-[200px] text-sm text-muted-foreground">
+                            <div className="line-clamp-3" title={signalDesc ?? undefined}>
+                              {sig.signal_url ? (
+                                <a
+                                  href={sig.signal_url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="hover:underline"
+                                >
+                                  {signalDesc ?? sig.signal_url}
+                                </a>
+                              ) : (
+                                (signalDesc ?? "—")
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell>
                             {signalType && (
@@ -499,11 +505,10 @@ function NewsSourcesPage() {
                               />
                             )}
                           </TableCell>
+                          {/* Source with its date underneath, instead of a column each */}
                           <TableCell className="text-sm text-muted-foreground">
-                            {sig.source}
-                          </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
-                            {sig.created_at?.slice(0, 10)}
+                            <div>{sig.source}</div>
+                            <div className="text-xs">{sig.created_at?.slice(0, 10)}</div>
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-1.5">
