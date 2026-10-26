@@ -35,6 +35,9 @@ export const Route = createFileRoute("/_app/linkedin-engagement")({
   component: LinkedInEngagementPage,
 });
 
+// An entry still needs loading when it has never been loaded, or the last try found no posts.
+const needsPosts = (c: Contact) => !c.post_summary || c.recent_posts.length === 0;
+
 // Set when no posts came back: what the LinkedIn Phantom returned instead.
 type PostsNote = { posts_note?: string | null };
 
@@ -69,7 +72,7 @@ function LinkedInEngagementPage() {
 
   // Loads posts + summaries one entry at a time — each is a LinkedIn scrape via Phantombuster.
   const loadAll = async () => {
-    const todo = contacts.filter((c) => !c.post_summary);
+    const todo = contacts.filter(needsPosts);
     if (todo.length === 0) return;
     setLoadingAll(true);
     let failed = 0;
@@ -100,7 +103,7 @@ function LinkedInEngagementPage() {
         <Button
           size="sm"
           variant="outline"
-          disabled={loadingAll || contacts.every((c) => c.post_summary)}
+          disabled={loadingAll || !contacts.some(needsPosts)}
           onClick={loadAll}
         >
           {loadingAll ? (
@@ -240,7 +243,7 @@ function EngagementRow({ contact: c }: { contact: Contact }) {
         </TableCell>
         <TableCell>{isCompany ? "—" : <ConnectionCell contact={c} />}</TableCell>
         <TableCell className="text-sm">
-          {c.post_summary ? (
+          {c.post_summary && hasPosts ? (
             <div className="flex items-start gap-2">
               <p className="flex-1 text-muted-foreground">{c.post_summary}</p>
               <Button
@@ -259,20 +262,25 @@ function EngagementRow({ contact: c }: { contact: Contact }) {
               </Button>
             </div>
           ) : (
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={loading}
-              onClick={() => refreshMutation.mutate()}
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> Loading posts…
-                </>
-              ) : (
-                "Load posts & summary"
-              )}
-            </Button>
+            <div className="space-y-1.5">
+              {c.post_summary && <p className="text-muted-foreground">{c.post_summary}</p>}
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={loading}
+                onClick={() => refreshMutation.mutate()}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> Loading posts…
+                  </>
+                ) : c.post_summary ? (
+                  "Try again"
+                ) : (
+                  "Load posts & summary"
+                )}
+              </Button>
+            </div>
           )}
           {c.commented_at && (
             <div className="mt-1">
