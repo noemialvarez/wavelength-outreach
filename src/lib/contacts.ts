@@ -20,6 +20,7 @@ export type Contact = {
   selected: boolean;
   request_status: "none" | "requested" | "failed";
   request_error: string | null;
+  requested_at: string | null;
   recent_posts: ContactPost[];
   post_summary: string | null;
   post_summary_at: string | null;

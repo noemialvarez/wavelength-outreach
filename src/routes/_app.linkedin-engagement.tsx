@@ -26,6 +26,7 @@ import {
 import { EmptyState } from "@/components/empty-state";
 import { StatusBadge } from "@/components/status-badge";
 import { ConnectionCell } from "@/components/lead-discovery/connection-cell";
+import { ConnectionRequests } from "@/components/lead-discovery/connection-requests";
 import { errorMessage, type Contact } from "@/lib/contacts";
 import api from "@/lib/api";
 
@@ -33,6 +34,9 @@ export const Route = createFileRoute("/_app/linkedin-engagement")({
   head: () => ({ meta: [{ title: "LinkedIn Engagement — Wavelength" }] }),
   component: LinkedInEngagementPage,
 });
+
+// Set when no posts came back: what the LinkedIn Phantom returned instead.
+type PostsNote = { posts_note?: string | null };
 
 function LinkedInEngagementPage() {
   const queryClient = useQueryClient();
@@ -71,7 +75,8 @@ function LinkedInEngagementPage() {
     let failed = 0;
     for (const c of todo) {
       try {
-        await api.post(`/api/contacts/${c.id}/refresh-posts`);
+        const r = await api.post(`/api/contacts/${c.id}/refresh-posts`);
+        if (r.data?.posts_note) toast.info(`${c.name}: ${r.data.posts_note}`, { duration: 15000 });
       } catch {
         failed++;
       }
@@ -106,6 +111,8 @@ function LinkedInEngagementPage() {
           {loadingAll ? "Loading posts…" : "Load all posts"}
         </Button>
       </div>
+
+      <ConnectionRequests />
 
       {isLoading ? (
         <p className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
@@ -160,8 +167,12 @@ function EngagementRow({ contact: c }: { contact: Contact }) {
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["contacts"] });
 
   const refreshMutation = useMutation({
-    mutationFn: () => api.post(`/api/contacts/${c.id}/refresh-posts`),
-    onSuccess: invalidate,
+    mutationFn: () =>
+      api.post(`/api/contacts/${c.id}/refresh-posts`).then((r) => r.data as Contact & PostsNote),
+    onSuccess: (d) => {
+      invalidate();
+      if (d.posts_note) toast.info(d.posts_note, { duration: 15000 });
+    },
     onError: (err: unknown) => toast.error(errorMessage(err, "Couldn't load posts")),
   });
 
