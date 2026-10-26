@@ -80,6 +80,7 @@ export function ByNameSearch() {
   const [purpose, setPurpose] = useState("");
   const [showCustomPurposeInput, setShowCustomPurposeInput] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const [open, setOpen] = useState(false);
   const [results, setResults] = useState<NameCandidate[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [connectingIds, setConnectingIds] = useState<Set<string>>(new Set());
@@ -139,7 +140,13 @@ export function ByNameSearch() {
 
   const runSearch = async () => {
     const validRows = rows.filter((r) => r.firstName.trim() && r.lastName.trim());
-    if (validRows.length === 0 || !purpose.trim()) return;
+    if (validRows.length === 0 || !purpose.trim()) {
+      // The search button shows even while the section is collapsed: open the form and say what's missing.
+      setOpen(true);
+      toast.info("Add a first and last name and a reason for reaching out, then search again.");
+      return;
+    }
+    setOpen(true); // so the results are visible
     setIsSearching(true);
     let found = 0;
     let failed = 0;
@@ -223,6 +230,148 @@ export function ByNameSearch() {
       eyebrow="Option 3"
       title="By name LinkedIn outreach"
       description="Search for one or more specific people on LinkedIn, send connection requests, and run the whole outreach funnel through to email escalation — all in one place."
+      open={open}
+      onOpenChange={setOpen}
+      primaryAction={
+        <Button size="sm" disabled={isSearching} onClick={runSearch}>
+          {isSearching ? (
+            <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+          ) : (
+            <Search className="mr-1.5 h-4 w-4" />
+          )}
+          {isSearching ? "Searching…" : `Find LinkedIn profile${rows.length === 1 ? "" : "s"}`}
+        </Button>
+      }
+      footer={
+        open ? (
+          <div className="space-y-6 pt-6">
+            {results.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/20 p-3">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
+                    onClick={toggleAll}
+                  >
+                    {allSelected ? "Clear all" : "Select all"}
+                  </Button>
+                  <span className="text-xs text-muted-foreground">{selected.size} selected</span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-muted-foreground hover:text-destructive"
+                    disabled={selected.size === 0}
+                    onClick={deleteSelected}
+                  >
+                    <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                    Delete selected
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="ml-auto"
+                    disabled={selected.size === 0 || connectingIds.size > 0}
+                    onClick={() => sendConnectionRequests(Array.from(selected))}
+                  >
+                    {connectingIds.size > 0 ? (
+                      <>
+                        <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                        Sending… ({connectingIds.size} left)
+                      </>
+                    ) : (
+                      <>
+                        <Send className="mr-1.5 h-3.5 w-3.5" />
+                        Send connection request{selected.size === 1 ? "" : "s"}
+                      </>
+                    )}
+                  </Button>
+                </div>
+                <div className="overflow-hidden rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-10"></TableHead>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Title</TableHead>
+                        <TableHead>Company</TableHead>
+                        <TableHead>LinkedIn</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {results.map((r) => (
+                        <TableRow key={r.id}>
+                          <TableCell>
+                            <Checkbox
+                              checked={selected.has(r.id)}
+                              onCheckedChange={() => toggleSelect(r.id)}
+                            />
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            {r.firstName} {r.lastName}
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {r.title ?? "—"}
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {r.company || "—"}
+                          </TableCell>
+                          <TableCell>
+                            {r.linkedin_url ? (
+                              <a
+                                href={r.linkedin_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-sm text-brand-blue hover:underline"
+                              >
+                                View
+                              </a>
+                            ) : (
+                              "—"
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
+                              disabled={connectingIds.size > 0}
+                              onClick={() => sendConnectionRequests([r.id])}
+                            >
+                              {connectingIds.has(r.id) ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                "Send connection request"
+                              )}
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            )}
+
+            {/* The rest of the Option 3 funnel — all one box, one fold */}
+            <div className="border-t pt-6">
+              <NameSearchLeads />
+            </div>
+            <div className="border-t pt-6">
+              <LinkedinPendingConnections />
+            </div>
+            <div className="border-t pt-6">
+              <LinkedinMessageQueue />
+            </div>
+            <div className="border-t pt-6">
+              <LinkedinReminders />
+            </div>
+            <div className="border-t pt-6">
+              <EmailEscalation />
+            </div>
+          </div>
+        ) : null
+      }
     >
       <div className="space-y-4">
         {rows.map((row, i) => (
@@ -314,144 +463,6 @@ export function ByNameSearch() {
               placeholder="Type your own reason — it'll be saved for next time"
             />
           )}
-        </div>
-
-        <div className="flex justify-end">
-          <Button size="sm" disabled={isSearching || !purpose.trim()} onClick={runSearch}>
-            {isSearching ? (
-              <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-            ) : (
-              <Search className="mr-1.5 h-4 w-4" />
-            )}
-            {isSearching ? "Searching…" : `Find LinkedIn profile${rows.length === 1 ? "" : "s"}`}
-          </Button>
-        </div>
-      </div>
-
-      <div className="space-y-6 pt-4">
-        {results.length > 0 && (
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/20 p-3">
-              <Button
-                size="sm"
-                variant="outline"
-                className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
-                onClick={toggleAll}
-              >
-                {allSelected ? "Clear all" : "Select all"}
-              </Button>
-              <span className="text-xs text-muted-foreground">{selected.size} selected</span>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="text-muted-foreground hover:text-destructive"
-                disabled={selected.size === 0}
-                onClick={deleteSelected}
-              >
-                <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-                Delete selected
-              </Button>
-              <Button
-                size="sm"
-                className="ml-auto"
-                disabled={selected.size === 0 || connectingIds.size > 0}
-                onClick={() => sendConnectionRequests(Array.from(selected))}
-              >
-                {connectingIds.size > 0 ? (
-                  <>
-                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                    Sending… ({connectingIds.size} left)
-                  </>
-                ) : (
-                  <>
-                    <Send className="mr-1.5 h-3.5 w-3.5" />
-                    Send connection request{selected.size === 1 ? "" : "s"}
-                  </>
-                )}
-              </Button>
-            </div>
-            <div className="overflow-hidden rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-10"></TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Title</TableHead>
-                    <TableHead>Company</TableHead>
-                    <TableHead>LinkedIn</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {results.map((r) => (
-                    <TableRow key={r.id}>
-                      <TableCell>
-                        <Checkbox
-                          checked={selected.has(r.id)}
-                          onCheckedChange={() => toggleSelect(r.id)}
-                        />
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        {r.firstName} {r.lastName}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {r.title ?? "—"}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {r.company || "—"}
-                      </TableCell>
-                      <TableCell>
-                        {r.linkedin_url ? (
-                          <a
-                            href={r.linkedin_url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-sm text-brand-blue hover:underline"
-                          >
-                            View
-                          </a>
-                        ) : (
-                          "—"
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
-                          disabled={connectingIds.size > 0}
-                          onClick={() => sendConnectionRequests([r.id])}
-                        >
-                          {connectingIds.has(r.id) ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            "Send connection request"
-                          )}
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
-        )}
-
-        {/* The rest of the Option 3 funnel — all one box, one fold */}
-        <div className="border-t pt-6">
-          <NameSearchLeads />
-        </div>
-        <div className="border-t pt-6">
-          <LinkedinPendingConnections />
-        </div>
-        <div className="border-t pt-6">
-          <LinkedinMessageQueue />
-        </div>
-        <div className="border-t pt-6">
-          <LinkedinReminders />
-        </div>
-        <div className="border-t pt-6">
-          <EmailEscalation />
         </div>
       </div>
     </CollapsibleSection>

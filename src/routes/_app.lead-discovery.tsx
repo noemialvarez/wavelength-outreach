@@ -221,11 +221,13 @@ function LeadDiscoveryPage() {
   );
   const sections = [
     {
-      title: "Option 1: Leads from ICP Filters",
+      eyebrow: "Option 1",
+      title: "Leads from ICP filters",
       items: filtered.filter((l) => l.source === "icp_filters"),
     },
     {
-      title: "Option 2: Leads from Company Description",
+      eyebrow: "Option 2",
+      title: "Leads from company description",
       items: filtered.filter((l) => l.source === "company_description"),
     },
   ].filter((sec) => sec.items.length > 0);
@@ -649,7 +651,7 @@ function LeadDiscoveryPage() {
                 onClick={expandAllSections}
                 className="text-sm font-medium text-brand-blue hover:underline"
               >
-                Show all
+                Expand all lists
               </button>
             )}
             <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -676,6 +678,7 @@ function LeadDiscoveryPage() {
             {sections.map((sec) => (
               <LeadGroup
                 key={sec.title}
+                eyebrow={sec.eyebrow}
                 title={sec.title}
                 items={sec.items}
                 actions={leadActions}

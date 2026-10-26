@@ -17,6 +17,10 @@ type CollapsibleSectionProps = {
   // the input fields collapse.
   footer?: ReactNode;
   defaultOpen?: boolean;
+  // Optional: let the parent control whether the section is open (e.g. to open it when its
+  // always-visible button needs input). Without these, the section manages itself.
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   children: ReactNode;
 };
 
@@ -29,9 +33,16 @@ export function CollapsibleSection({
   primaryAction,
   footer,
   defaultOpen = false,
+  open: controlledOpen,
+  onOpenChange,
   children,
 }: CollapsibleSectionProps) {
-  const [open, setOpen] = useState(defaultOpen);
+  const [internalOpen, setInternalOpen] = useState(defaultOpen);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = (value: boolean) => {
+    if (controlledOpen === undefined) setInternalOpen(value);
+    onOpenChange?.(value);
+  };
 
   return (
     <Card className="p-6">

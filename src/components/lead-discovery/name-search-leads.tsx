@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/table";
 import { EmptyState } from "@/components/empty-state";
 import { StatusBadge } from "@/components/status-badge";
+import { GroupTitle, ShowMoreToggle, PREVIEW_COUNT } from "@/components/lead-discovery/group-parts";
 import api from "@/lib/api";
 
 type NameSearchLead = {
@@ -38,6 +39,7 @@ const statusTones: Record<string, "turquoise" | "pink" | "blue" | "muted"> = {
 export function NameSearchLeads() {
   const queryClient = useQueryClient();
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [showAll, setShowAll] = useState(false);
 
   const { data: leads = [], isLoading } = useQuery<NameSearchLead[]>({
     queryKey: ["leads", "by-name"],
@@ -69,8 +71,21 @@ export function NameSearchLeads() {
     });
   };
 
-  const allSelected = leads.length > 0 && leads.every((l) => selected.has(l.id));
-  const toggleAll = () => setSelected(allSelected ? new Set() : new Set(leads.map((l) => l.id)));
+  // Only the first few leads show until "Show all"; select-all and the bulk buttons act on what is shown.
+  const visible = showAll ? leads : leads.slice(0, PREVIEW_COUNT);
+  const allSelected = visible.length > 0 && visible.every((l) => selected.has(l.id));
+  const toggleAll = () => setSelected(allSelected ? new Set() : new Set(visible.map((l) => l.id)));
+  const toggleShowAll = () => {
+    if (showAll) {
+      // hiding rows: drop them from the selection so a bulk action can't touch rows you can't see
+      setSelected((prev) => {
+        const next = new Set(prev);
+        leads.slice(PREVIEW_COUNT).forEach((l) => next.delete(l.id));
+        return next;
+      });
+    }
+    setShowAll((v) => !v);
+  };
 
   const bulkSetStatus = async (ids: string[], status: string) => {
     if (ids.length === 0) return;
@@ -95,12 +110,7 @@ export function NameSearchLeads() {
 
   return (
     <div className="space-y-3">
-      <div>
-        <h3 className="text-sm font-semibold">Leads from Name Search</h3>
-        <p className="text-xs text-muted-foreground">
-          {leads.length} {leads.length === 1 ? "lead" : "leads"}
-        </p>
-      </div>
+      <GroupTitle eyebrow="Option 3" title="Leads from name search" count={leads.length} />
 
       {isLoading ? (
         <p className="py-6 text-center text-sm text-muted-foreground">Loading…</p>
@@ -161,7 +171,7 @@ export function NameSearchLeads() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {leads.map((l) => (
+                {visible.map((l) => (
                   <TableRow key={l.id}>
                     <TableCell>
                       <Checkbox
@@ -236,6 +246,7 @@ export function NameSearchLeads() {
               </TableBody>
             </Table>
           </div>
+          <ShowMoreToggle total={leads.length} expanded={showAll} onToggle={toggleShowAll} />
         </>
       )}
     </div>

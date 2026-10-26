@@ -30,6 +30,7 @@ import type { SignalType, LeadStatus } from "@/lib/store";
 import { errorMessage, type Contact } from "@/lib/contacts";
 import { ConnectionCell } from "@/components/lead-discovery/connection-cell";
 import { StickyXScroll } from "@/components/sticky-x-scroll";
+import { GroupTitle, ShowMoreToggle, PREVIEW_COUNT } from "@/components/lead-discovery/group-parts";
 import { AddPersonDialog } from "@/components/lead-discovery/add-person-dialog";
 import api from "@/lib/api";
 
@@ -60,8 +61,6 @@ const statusTones: Record<LeadStatus, "turquoise" | "pink" | "blue" | "muted"> =
   Skipped: "muted",
   Pushed: "blue",
 };
-
-const sectionTone = "bg-brand-turquoise/15 text-brand-turquoise border-brand-turquoise/30";
 
 type SelectResponse = {
   contact: Contact;
@@ -672,14 +671,18 @@ function LeadTable({ items, actions }: { items: LeadRow[]; actions: LeadActions 
   );
 }
 
-// A titled, collapsible group of leads with select-all and bulk actions.
+// A titled, collapsible group of leads with select-all and bulk actions. Shows the first few
+// leads and a "Show all" toggle for the rest. The title sits on its own row and the buttons
+// wrap on a row below it, so many buttons can't squash the title.
 export function LeadGroup({
+  eyebrow,
   title,
   items,
   actions,
   collapsed,
   onToggleCollapsed,
 }: {
+  eyebrow?: string;
   title: string;
   items: LeadRow[];
   actions: LeadActions;
@@ -697,47 +700,49 @@ export function LeadGroup({
     bulkSetIds,
     bulkDeleteIds,
   } = actions;
-  const groupSelected = items.filter((l) => selected.has(l.id)).map((l) => l.id);
-  const allSelected = groupSelected.length === items.length;
+  const [showAll, setShowAll] = useState(false);
+
+  // Only the leads on screen take part in select-all and the bulk buttons.
+  const visible = showAll ? items : items.slice(0, PREVIEW_COUNT);
+  const groupSelected = visible.filter((l) => selected.has(l.id)).map((l) => l.id);
+  const allSelected = visible.length > 0 && groupSelected.length === visible.length;
   const toggleAll = () => {
     setSelected((prev) => {
       const next = new Set(prev);
-      if (allSelected) items.forEach((l) => next.delete(l.id));
-      else items.forEach((l) => next.add(l.id));
+      if (allSelected) visible.forEach((l) => next.delete(l.id));
+      else visible.forEach((l) => next.add(l.id));
       return next;
     });
+  };
+  const toggleShowAll = () => {
+    if (showAll) {
+      // hiding rows: drop them from the selection so a bulk action can't touch rows you can't see
+      setSelected((prev) => {
+        const next = new Set(prev);
+        items.slice(PREVIEW_COUNT).forEach((l) => next.delete(l.id));
+        return next;
+      });
+    }
+    setShowAll((v) => !v);
   };
 
   return (
     <div className="rounded-lg border bg-muted/10 p-4">
-      <div className="mb-3 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
-        <div className="flex items-center gap-2">
-          <span
-            className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-semibold ${sectionTone}`}
-          >
-            {title}
-          </span>
-          <span className="text-xs text-muted-foreground">
-            {items.length} {items.length === 1 ? "lead" : "leads"}
-          </span>
-          <button
-            type="button"
-            onClick={onToggleCollapsed}
-            className="inline-flex items-center gap-0.5 text-xs font-medium text-brand-blue hover:underline"
-          >
-            {collapsed ? (
-              <>
-                <ChevronDown className="h-3 w-3" /> Show
-              </>
-            ) : (
-              <>
-                <ChevronUp className="h-3 w-3" /> Hide
-              </>
-            )}
-          </button>
-        </div>
-        {!collapsed && (
-          <div className="flex flex-wrap items-center justify-end gap-2">
+      <div className="flex items-start justify-between gap-3">
+        <GroupTitle eyebrow={eyebrow} title={title} count={items.length} />
+        <button
+          type="button"
+          onClick={onToggleCollapsed}
+          className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-muted"
+          title={collapsed ? "Show this list" : "Hide this list"}
+          aria-label={collapsed ? "Show this list" : "Hide this list"}
+        >
+          {collapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+        </button>
+      </div>
+      {!collapsed && (
+        <>
+          <div className="mt-3 flex flex-wrap items-center gap-2 rounded-md border bg-muted/20 p-3">
             <Button
               size="sm"
               variant="outline"
@@ -828,9 +833,12 @@ export function LeadGroup({
               Delete selected
             </Button>
           </div>
-        )}
-      </div>
-      {!collapsed && <LeadTable items={items} actions={actions} />}
+          <div className="mt-3">
+            <LeadTable items={visible} actions={actions} />
+          </div>
+          <ShowMoreToggle total={items.length} expanded={showAll} onToggle={toggleShowAll} />
+        </>
+      )}
     </div>
   );
 }
