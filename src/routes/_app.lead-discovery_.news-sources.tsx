@@ -413,8 +413,8 @@ function NewsSourcesPage() {
                 </Button>
               </div>
               <div className="overflow-hidden rounded-md border">
-                <Table>
-                  <TableHeader>
+                <Table containerClassName="max-h-[70vh]">
+                  <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-card">
                     <TableRow>
                       <TableHead className="w-10"></TableHead>
                       <TableHead>Company</TableHead>

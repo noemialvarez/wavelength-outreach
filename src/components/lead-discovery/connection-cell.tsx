@@ -1,8 +1,8 @@
 import { StatusBadge } from "@/components/status-badge";
 import type { Contact } from "@/lib/contacts";
 
-// "Yes" / "No" for whether you're connected with this person on LinkedIn. When the
-// status couldn't be verified it shows a dash rather than a wrong "No".
+// "Yes" / "No" for whether you're connected with this person on LinkedIn. When it hasn't been
+// confirmed it says "Unknown" (never a guessed "No"), with a tooltip on how to resolve it.
 export function ConnectionCell({ contact }: { contact: Contact }) {
   if (contact.connection === "yes") return <StatusBadge label="Yes" tone="turquoise" />;
   if (contact.connection === "no") {
@@ -23,9 +23,9 @@ export function ConnectionCell({ contact }: { contact: Contact }) {
   return (
     <span
       className="text-sm text-muted-foreground"
-      title="Couldn't verify — the connections list isn't available or this profile link can't be matched"
+      title="Not confirmed yet — click “Refresh connections” above the table to check against your LinkedIn connections list"
     >
-      —
+      Unknown
     </span>
   );
 }

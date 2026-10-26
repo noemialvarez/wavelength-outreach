@@ -152,15 +152,17 @@ export function useLeadActions() {
     setTeamLookupIds(new Set(leadIds));
     let people = 0;
     let errors = 0;
-    let connectionsUnavailable = false;
+    let unknownConnections = 0;
+    let lastError = "";
 
     for (const id of leadIds) {
       try {
         const r = await api.post("/api/contacts/find-team", { lead_id: id });
         people += r.data.contacts?.length ?? 0;
-        if (r.data.connections_available === false) connectionsUnavailable = true;
-      } catch {
+        unknownConnections += r.data.unknown_count ?? 0;
+      } catch (err) {
         errors++;
+        lastError = errorMessage(err, "Couldn't reach the backend — check your connection");
       }
       setTeamLookupIds((prev) => {
         const next = new Set(prev);
@@ -171,11 +173,15 @@ export function useLeadActions() {
     }
 
     const summary = `${people} ${people === 1 ? "person" : "people"} found${errors ? `, ${errors} search${errors === 1 ? "" : "es"} failed` : ""}`;
-    if (people === 0 && errors) toast.error(`Team search failed — check backend connection`);
+    // Show the backend's actual reason (e.g. an expired LinkedIn session) and keep it up long
+    // enough to read and copy.
+    if (people === 0 && errors)
+      toast.error(`Team search failed: ${lastError}`, { duration: 20000 });
     else toast.success(summary);
-    if (connectionsUnavailable) {
+    if (unknownConnections > 0) {
       toast.info(
-        "Connection status couldn't be verified — the LinkedIn Connections Export agent isn't set up or returned nothing",
+        `${unknownConnections} ${unknownConnections === 1 ? "connection" : "connections"} couldn't be confirmed from the search. Click “Refresh connections” to check them against your LinkedIn connections list.`,
+        { duration: 10000 },
       );
     }
   };
@@ -231,6 +237,7 @@ export function useLeadActions() {
     let foundersFound = 0;
     let emailsFound = 0;
     let errors = 0;
+    let lastError = "";
 
     for (const id of ids) {
       const [founderResult, emailResult] = await Promise.allSettled([
@@ -240,6 +247,9 @@ export function useLeadActions() {
       if (founderResult.status === "fulfilled" && founderResult.value.found) foundersFound++;
       if (emailResult.status === "fulfilled" && emailResult.value.email) emailsFound++;
       if (founderResult.status === "rejected" && emailResult.status === "rejected") errors++;
+      if (founderResult.status === "rejected") {
+        lastError = errorMessage(founderResult.reason, "Founder search failed");
+      }
       setBatchLookupIds((prev) => {
         const next = new Set(prev);
         next.delete(id);
@@ -253,6 +263,10 @@ export function useLeadActions() {
         errors ? `, ${errors} lead${errors === 1 ? "" : "s"} failed` : ""
       }`,
     );
+    // A "0 found" that's really a failure should say why.
+    if (foundersFound === 0 && lastError) {
+      toast.error(`Founder search failed: ${lastError}`, { duration: 20000 });
+    }
   };
 
   const bulkSetIds = async (ids: string[], status: LeadStatus) => {
@@ -335,8 +349,10 @@ function LeadTable({ items, actions }: { items: LeadRow[]; actions: LeadActions 
 
   return (
     <div className="overflow-hidden rounded-md border">
-      <Table>
-        <TableHeader>
+      {/* Capped height: the horizontal scrollbar stays at the bottom of the visible box rather
+          than the bottom of every row, and the header row stays pinned while scrolling. */}
+      <Table containerClassName="max-h-[70vh]">
+        <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-card">
           <TableRow>
             <TableHead className="w-10"></TableHead>
             <TableHead>Company</TableHead>
