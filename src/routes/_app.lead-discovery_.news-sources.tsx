@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/table";
 import { EmptyState } from "@/components/empty-state";
 import { StatusBadge } from "@/components/status-badge";
+import { StickyXScroll } from "@/components/sticky-x-scroll";
 import { store, useStore, uid } from "@/lib/store";
 import api from "@/lib/api";
 import { CollapsibleSection } from "@/components/lead-discovery/collapsible-section";
@@ -412,9 +413,9 @@ function NewsSourcesPage() {
                   Skip selected
                 </Button>
               </div>
-              <div className="overflow-hidden rounded-md border">
-                <Table containerClassName="max-h-[70vh]">
-                  <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-card">
+              <StickyXScroll>
+                <Table containerClassName="overflow-visible">
+                  <TableHeader>
                     <TableRow>
                       <TableHead className="w-10"></TableHead>
                       <TableHead>Company</TableHead>
@@ -538,7 +539,7 @@ function NewsSourcesPage() {
                     })}
                   </TableBody>
                 </Table>
-              </div>
+              </StickyXScroll>
             </div>
           )}
         </div>

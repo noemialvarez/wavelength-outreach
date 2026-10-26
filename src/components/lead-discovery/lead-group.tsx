@@ -29,6 +29,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import type { SignalType, LeadStatus } from "@/lib/store";
 import { errorMessage, type Contact } from "@/lib/contacts";
 import { ConnectionCell } from "@/components/lead-discovery/connection-cell";
+import { StickyXScroll } from "@/components/sticky-x-scroll";
 import api from "@/lib/api";
 
 export type LeadRow = {
@@ -154,12 +155,21 @@ export function useLeadActions() {
     let errors = 0;
     let unknownConnections = 0;
     let lastError = "";
+    let emptyReason = "";
 
     for (const id of leadIds) {
       try {
         const r = await api.post("/api/contacts/find-team", { lead_id: id });
         people += r.data.contacts?.length ?? 0;
         unknownConnections += r.data.unknown_count ?? 0;
+        // Say what the search did when it came back empty, instead of a bare "0 found".
+        const s = r.data.search as { searched_for: string; raw: number } | undefined;
+        if (s && !(r.data.contacts?.length > 0)) {
+          emptyReason =
+            s.raw === 0
+              ? `LinkedIn returned no results for “${s.searched_for}”.`
+              : `LinkedIn returned ${s.raw} result${s.raw === 1 ? "" : "s"} for “${s.searched_for}”, but none looked like a current founder or executive of that company.`;
+        }
       } catch (err) {
         errors++;
         lastError = errorMessage(err, "Couldn't reach the backend — check your connection");
@@ -177,6 +187,8 @@ export function useLeadActions() {
     // enough to read and copy.
     if (people === 0 && errors)
       toast.error(`Team search failed: ${lastError}`, { duration: 20000 });
+    else if (people === 0 && emptyReason)
+      toast.info(`No people found. ${emptyReason}`, { duration: 20000 });
     else toast.success(summary);
     if (unknownConnections > 0) {
       toast.info(
@@ -348,11 +360,9 @@ function LeadTable({ items, actions }: { items: LeadRow[]; actions: LeadActions 
   } = actions;
 
   return (
-    <div className="overflow-hidden rounded-md border">
-      {/* Capped height: the horizontal scrollbar stays at the bottom of the visible box rather
-          than the bottom of every row, and the header row stays pinned while scrolling. */}
-      <Table containerClassName="max-h-[70vh]">
-        <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-card">
+    <StickyXScroll>
+      <Table containerClassName="overflow-visible">
+        <TableHeader>
           <TableRow>
             <TableHead className="w-10"></TableHead>
             <TableHead>Company</TableHead>
@@ -587,7 +597,7 @@ function LeadTable({ items, actions }: { items: LeadRow[]; actions: LeadActions 
           })}
         </TableBody>
       </Table>
-    </div>
+    </StickyXScroll>
   );
 }
 
