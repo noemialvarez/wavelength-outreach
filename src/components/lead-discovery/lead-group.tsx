@@ -176,7 +176,7 @@ export function useLeadActions() {
               org_candidates?: string[];
               credits_estimate?: number;
               from_cache?: boolean;
-              tried?: { steps: { listed?: number }[] }[];
+              tried?: { steps: { listed?: number; titles?: string[] }[] }[];
             }
           | undefined;
         if (s?.source === "apollo" && !s.from_cache) apolloCredits += s.credits_estimate ?? 0;
@@ -191,7 +191,11 @@ export function useLeadActions() {
                       0,
                       ...(s.tried ?? []).flatMap((t) => t.steps.map((st) => st.listed ?? 0)),
                     );
-                    return `Apollo knows “${s.org_name}” but ${listed ? `lists ${listed} ${listed === 1 ? "person" : "people"} for it, none with a founder or executive title` : "lists no people for it at all"}.`;
+                    // A few of the titles Apollo has for them, to show why none counted as leadership.
+                    const titles = (s.tried ?? [])
+                      .flatMap((t) => t.steps.flatMap((st) => st.titles ?? []))
+                      .slice(0, 6);
+                    return `Apollo knows “${s.org_name}” but ${listed ? `lists ${listed} ${listed === 1 ? "person" : "people"} for it, none with a founder or executive title${titles.length ? ` (titles include: ${titles.join(", ")})` : ""}` : "lists no people for it at all"}.`;
                   })()
                 : `Apollo lists ${s.raw} founder${s.raw === 1 ? "" : "s"}/executive${s.raw === 1 ? "" : "s"} at “${s.org_name}”, but none had a LinkedIn profile.`;
           } else {
