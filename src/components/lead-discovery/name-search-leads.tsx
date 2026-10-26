@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Loader2, Trash2, Users } from "lucide-react";
+import { Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { EmptyState } from "@/components/empty-state";
 import { StatusBadge } from "@/components/status-badge";
 import { GroupTitle, ShowMoreToggle, PREVIEW_COUNT } from "@/components/lead-discovery/group-parts";
 import api from "@/lib/api";
@@ -36,18 +35,23 @@ const statusTones: Record<string, "turquoise" | "pink" | "blue" | "muted"> = {
 // Self-contained — deliberately doesn't reuse the shared Leads Results table:
 // leads found via Option 3 are already the named target person, so unlike
 // the other sections there's no "Find founder" or Apollo email lookup here.
-export function NameSearchLeads() {
-  const queryClient = useQueryClient();
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [showAll, setShowAll] = useState(false);
-
-  const { data: leads = [], isLoading } = useQuery<NameSearchLead[]>({
+export function useNameSearchLeads() {
+  return useQuery<NameSearchLead[]>({
     queryKey: ["leads", "by-name"],
     queryFn: () =>
       api
         .get("/api/leads", { params: { source: "by_name", limit: 100 } })
         .then((r) => (r.data.data ?? r.data ?? []) as NameSearchLead[]),
   });
+}
+
+// Shown in Leads Results as one of its lists; nothing is shown until there is a lead.
+export function NameSearchLeads() {
+  const queryClient = useQueryClient();
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [showAll, setShowAll] = useState(false);
+
+  const { data: leads = [] } = useNameSearchLeads();
 
   const updateStatusMutation = useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) =>
@@ -108,147 +112,141 @@ export function NameSearchLeads() {
     setSelected(new Set());
   };
 
+  if (leads.length === 0) return null;
+
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 rounded-lg border bg-muted/10 p-4">
       <GroupTitle eyebrow="Option 3" title="Leads from name search" count={leads.length} />
 
-      {isLoading ? (
-        <p className="py-6 text-center text-sm text-muted-foreground">Loading…</p>
-      ) : leads.length === 0 ? (
-        <EmptyState icon={Users} message="No leads from name search yet." />
-      ) : (
-        <>
-          <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/20 p-3">
-            <Button
-              size="sm"
-              variant="outline"
-              className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
-              onClick={toggleAll}
-            >
-              {allSelected ? "Clear all" : "Select all"}
-            </Button>
-            <span className="text-xs text-muted-foreground">{selected.size} selected</span>
-            <Button
-              size="sm"
-              variant="outline"
-              className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
-              disabled={selected.size === 0}
-              onClick={() => bulkSetStatus(Array.from(selected), "Approved")}
-            >
-              Approve selected
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
-              disabled={selected.size === 0}
-              onClick={() => bulkSetStatus(Array.from(selected), "Skipped")}
-            >
-              Skip selected
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="text-muted-foreground hover:text-destructive"
-              disabled={selected.size === 0}
-              onClick={() => bulkDelete(Array.from(selected))}
-            >
-              <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-              Delete selected
-            </Button>
-          </div>
-          <div className="overflow-hidden rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-10"></TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Company</TableHead>
-                  <TableHead>LinkedIn</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+      <>
+        <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/20 p-3">
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
+            onClick={toggleAll}
+          >
+            {allSelected ? "Clear all" : "Select all"}
+          </Button>
+          <span className="text-xs text-muted-foreground">{selected.size} selected</span>
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
+            disabled={selected.size === 0}
+            onClick={() => bulkSetStatus(Array.from(selected), "Approved")}
+          >
+            Approve selected
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
+            disabled={selected.size === 0}
+            onClick={() => bulkSetStatus(Array.from(selected), "Skipped")}
+          >
+            Skip selected
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-muted-foreground hover:text-destructive"
+            disabled={selected.size === 0}
+            onClick={() => bulkDelete(Array.from(selected))}
+          >
+            <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+            Delete selected
+          </Button>
+        </div>
+        <div className="overflow-hidden rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-10"></TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Company</TableHead>
+                <TableHead>LinkedIn</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {visible.map((l) => (
+                <TableRow key={l.id}>
+                  <TableCell>
+                    <Checkbox
+                      checked={selected.has(l.id)}
+                      onCheckedChange={() => toggleSelect(l.id)}
+                    />
+                  </TableCell>
+                  <TableCell className="font-medium">{l.name}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {l.company || "—"}
+                  </TableCell>
+                  <TableCell>
+                    {l.linkedin_url && (
+                      <a
+                        href={l.linkedin_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-sm text-brand-blue hover:underline"
+                      >
+                        View
+                      </a>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <StatusBadge label={l.status} tone={statusTones[l.status] ?? "muted"} />
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {l.created_at?.slice(0, 10)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-1.5">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
+                        onClick={() =>
+                          updateStatusMutation.mutate({ id: l.id, status: "Approved" })
+                        }
+                        disabled={l.status === "Approved" || l.status === "Pushed"}
+                      >
+                        Approve
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => updateStatusMutation.mutate({ id: l.id, status: "Skipped" })}
+                      >
+                        Skip
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="text-muted-foreground hover:text-destructive"
+                        title="Delete lead"
+                        onClick={() => {
+                          if (confirm(`Delete lead "${l.name}"?`)) deleteMutation.mutate(l.id);
+                        }}
+                        disabled={deleteMutation.isPending && deleteMutation.variables === l.id}
+                      >
+                        {deleteMutation.isPending && deleteMutation.variables === l.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-3.5 w-3.5" />
+                        )}
+                      </Button>
+                    </div>
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {visible.map((l) => (
-                  <TableRow key={l.id}>
-                    <TableCell>
-                      <Checkbox
-                        checked={selected.has(l.id)}
-                        onCheckedChange={() => toggleSelect(l.id)}
-                      />
-                    </TableCell>
-                    <TableCell className="font-medium">{l.name}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {l.company || "—"}
-                    </TableCell>
-                    <TableCell>
-                      {l.linkedin_url && (
-                        <a
-                          href={l.linkedin_url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-sm text-brand-blue hover:underline"
-                        >
-                          View
-                        </a>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <StatusBadge label={l.status} tone={statusTones[l.status] ?? "muted"} />
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {l.created_at?.slice(0, 10)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1.5">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
-                          onClick={() =>
-                            updateStatusMutation.mutate({ id: l.id, status: "Approved" })
-                          }
-                          disabled={l.status === "Approved" || l.status === "Pushed"}
-                        >
-                          Approve
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() =>
-                            updateStatusMutation.mutate({ id: l.id, status: "Skipped" })
-                          }
-                        >
-                          Skip
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="text-muted-foreground hover:text-destructive"
-                          title="Delete lead"
-                          onClick={() => {
-                            if (confirm(`Delete lead "${l.name}"?`)) deleteMutation.mutate(l.id);
-                          }}
-                          disabled={deleteMutation.isPending && deleteMutation.variables === l.id}
-                        >
-                          {deleteMutation.isPending && deleteMutation.variables === l.id ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-3.5 w-3.5" />
-                          )}
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-          <ShowMoreToggle total={leads.length} expanded={showAll} onToggle={toggleShowAll} />
-        </>
-      )}
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+        <ShowMoreToggle total={leads.length} expanded={showAll} onToggle={toggleShowAll} />
+      </>
     </div>
   );
 }
