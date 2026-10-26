@@ -147,13 +147,15 @@ export function useLeadActions() {
     return map;
   }, [contacts]);
 
-  // One lead at a time: each lookup is a LinkedIn search through Phantombuster.
+  // One lead at a time. The backend finds each company's founders and executives (through Apollo,
+  // or a LinkedIn search via Phantombuster when Apollo isn't set up).
   const runFindTeam = async (leadIds: string[]) => {
     if (leadIds.length === 0 || teamLookupIds.size > 0) return;
     setTeamLookupIds(new Set(leadIds));
     let people = 0;
     let errors = 0;
     let unknownConnections = 0;
+    let apolloCredits = 0;
     let lastError = "";
     let emptyReason = "";
 
@@ -164,13 +166,32 @@ export function useLeadActions() {
         unknownConnections += r.data.unknown_count ?? 0;
         // Say what the search did when it came back empty, instead of a bare "0 found".
         const s = r.data.search as
-          | { searched_for: string; raw: number; phantom_output?: string }
+          | {
+              source?: string;
+              searched_for: string;
+              raw: number;
+              phantom_output?: string;
+              org_found?: boolean;
+              org_name?: string | null;
+              org_candidates?: string[];
+              credits_estimate?: number;
+              from_cache?: boolean;
+            }
           | undefined;
+        if (s?.source === "apollo" && !s.from_cache) apolloCredits += s.credits_estimate ?? 0;
         if (s && !(r.data.contacts?.length > 0)) {
-          emptyReason =
-            s.raw === 0
-              ? `LinkedIn returned no results for “${s.searched_for}”.${s.phantom_output ? ` PhantomBuster reported: ${s.phantom_output}` : ""}`
-              : `LinkedIn returned ${s.raw} result${s.raw === 1 ? "" : "s"} for “${s.searched_for}”, but none looked like a current founder or executive of that company.`;
+          if (s.source === "apollo") {
+            emptyReason = !s.org_found
+              ? `Apollo has no company called “${s.searched_for}”${s.org_candidates?.length ? ` (closest: ${s.org_candidates.slice(0, 3).join(", ")})` : ""}.`
+              : s.raw === 0
+                ? `Apollo knows “${s.org_name}” but lists no founders or executives for it.`
+                : `Apollo lists ${s.raw} founder${s.raw === 1 ? "" : "s"}/executive${s.raw === 1 ? "" : "s"} at “${s.org_name}”, but none had a LinkedIn profile.`;
+          } else {
+            emptyReason =
+              s.raw === 0
+                ? `LinkedIn returned no results for “${s.searched_for}”.${s.phantom_output ? ` PhantomBuster reported: ${s.phantom_output}` : ""}`
+                : `LinkedIn returned ${s.raw} result${s.raw === 1 ? "" : "s"} for “${s.searched_for}”, but none looked like a current founder or executive of that company.`;
+          }
         }
       } catch (err) {
         errors++;
@@ -184,7 +205,7 @@ export function useLeadActions() {
       queryClient.invalidateQueries({ queryKey: ["contacts"] });
     }
 
-    const summary = `${people} ${people === 1 ? "person" : "people"} found${errors ? `, ${errors} search${errors === 1 ? "" : "es"} failed` : ""}`;
+    const summary = `${people} ${people === 1 ? "person" : "people"} found${errors ? `, ${errors} search${errors === 1 ? "" : "es"} failed` : ""}${apolloCredits ? ` · about ${apolloCredits} Apollo credit${apolloCredits === 1 ? "" : "s"} used` : ""}`;
     // Show the backend's actual reason (e.g. an expired LinkedIn session) and keep it up long
     // enough to read and copy.
     if (people === 0 && errors)
