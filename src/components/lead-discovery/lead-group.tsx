@@ -65,6 +65,8 @@ const statusTones: Record<LeadStatus, "turquoise" | "pink" | "blue" | "muted"> =
 type SelectResponse = {
   contact: Contact;
   request: { sent: boolean; reason?: "already_connected" | "already_requested"; error?: string };
+  // The person's own lead on Email Outreach (null if it couldn't be created).
+  lead?: { id: string; created: boolean; has_email: boolean } | null;
 };
 
 // Per-lead actions (status, delete, email, founder/team lookup, batch lookup, selecting
@@ -264,9 +266,16 @@ export function useLeadActions() {
   const selectContactMutation = useMutation({
     mutationFn: (id: string) =>
       api.post(`/api/contacts/${id}/select`).then((r) => r.data as SelectResponse),
-    onSuccess: ({ contact, request }) => {
+    onSuccess: ({ contact, request, lead }) => {
       queryClient.invalidateQueries({ queryKey: ["contacts"] });
       queryClient.invalidateQueries({ queryKey: ["leads"] });
+      // Say where they went: each selected person gets their own entry on Email Outreach.
+      if (lead?.created) {
+        toast.info(
+          `${contact.name} was added to Email Outreach${lead.has_email ? "" : " — no email address found yet, so add one before sending"}`,
+          { duration: 8000 },
+        );
+      }
       if (request.sent) toast.success(`Connection request sent to ${contact.name}`);
       else if (request.reason === "already_connected")
         toast.success(`${contact.name} selected — already connected`);
