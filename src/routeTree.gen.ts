@@ -9,37 +9,27 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AppSequenceMonitorRouteImport } from './routes/_app.sequence-monitor'
-import { Route as AppProspectEngagementRouteImport } from './routes/_app.prospect-engagement'
-import { Route as AppLinkedinEngagementRouteImport } from './routes/_app.linkedin-engagement'
-import { Route as AppLeadDiscoveryRouteImport } from './routes/_app.lead-discovery'
+import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppEmailOutreachRouteImport } from './routes/_app.email-outreach'
+import { Route as AppLeadDiscoveryRouteImport } from './routes/_app.lead-discovery'
+import { Route as AppLinkedinEngagementRouteImport } from './routes/_app.linkedin-engagement'
+import { Route as AppProspectEngagementRouteImport } from './routes/_app.prospect-engagement'
+import { Route as AppSequenceMonitorRouteImport } from './routes/_app.sequence-monitor'
 import { Route as AppLeadDiscoveryNewsSourcesRouteImport } from './routes/_app.lead-discovery_.news-sources'
 
-const AppRoute = AppRouteImport.update({
-  id: '/_app',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AppSequenceMonitorRoute = AppSequenceMonitorRouteImport.update({
-  id: '/sequence-monitor',
-  path: '/sequence-monitor',
-  getParentRoute: () => AppRoute,
+const AppRoute = AppRouteImport.update({
+  id: '/_app',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AppProspectEngagementRoute = AppProspectEngagementRouteImport.update({
-  id: '/prospect-engagement',
-  path: '/prospect-engagement',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppLinkedinEngagementRoute = AppLinkedinEngagementRouteImport.update({
-  id: '/linkedin-engagement',
-  path: '/linkedin-engagement',
+const AppEmailOutreachRoute = AppEmailOutreachRouteImport.update({
+  id: '/email-outreach',
+  path: '/email-outreach',
   getParentRoute: () => AppRoute,
 } as any)
 const AppLeadDiscoveryRoute = AppLeadDiscoveryRouteImport.update({
@@ -47,9 +37,19 @@ const AppLeadDiscoveryRoute = AppLeadDiscoveryRouteImport.update({
   path: '/lead-discovery',
   getParentRoute: () => AppRoute,
 } as any)
-const AppEmailOutreachRoute = AppEmailOutreachRouteImport.update({
-  id: '/email-outreach',
-  path: '/email-outreach',
+const AppLinkedinEngagementRoute = AppLinkedinEngagementRouteImport.update({
+  id: '/linkedin-engagement',
+  path: '/linkedin-engagement',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppProspectEngagementRoute = AppProspectEngagementRouteImport.update({
+  id: '/prospect-engagement',
+  path: '/prospect-engagement',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSequenceMonitorRoute = AppSequenceMonitorRouteImport.update({
+  id: '/sequence-monitor',
+  path: '/sequence-monitor',
   getParentRoute: () => AppRoute,
 } as any)
 const AppLeadDiscoveryNewsSourcesRoute =
@@ -126,13 +126,6 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/_app': {
-      id: '/_app'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof AppRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
@@ -140,25 +133,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_app/sequence-monitor': {
-      id: '/_app/sequence-monitor'
-      path: '/sequence-monitor'
-      fullPath: '/sequence-monitor'
-      preLoaderRoute: typeof AppSequenceMonitorRouteImport
-      parentRoute: typeof AppRoute
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_app/prospect-engagement': {
-      id: '/_app/prospect-engagement'
-      path: '/prospect-engagement'
-      fullPath: '/prospect-engagement'
-      preLoaderRoute: typeof AppProspectEngagementRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/linkedin-engagement': {
-      id: '/_app/linkedin-engagement'
-      path: '/linkedin-engagement'
-      fullPath: '/linkedin-engagement'
-      preLoaderRoute: typeof AppLinkedinEngagementRouteImport
+    '/_app/email-outreach': {
+      id: '/_app/email-outreach'
+      path: '/email-outreach'
+      fullPath: '/email-outreach'
+      preLoaderRoute: typeof AppEmailOutreachRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/lead-discovery': {
@@ -168,11 +154,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppLeadDiscoveryRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/email-outreach': {
-      id: '/_app/email-outreach'
-      path: '/email-outreach'
-      fullPath: '/email-outreach'
-      preLoaderRoute: typeof AppEmailOutreachRouteImport
+    '/_app/linkedin-engagement': {
+      id: '/_app/linkedin-engagement'
+      path: '/linkedin-engagement'
+      fullPath: '/linkedin-engagement'
+      preLoaderRoute: typeof AppLinkedinEngagementRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/prospect-engagement': {
+      id: '/_app/prospect-engagement'
+      path: '/prospect-engagement'
+      fullPath: '/prospect-engagement'
+      preLoaderRoute: typeof AppProspectEngagementRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/sequence-monitor': {
+      id: '/_app/sequence-monitor'
+      path: '/sequence-monitor'
+      fullPath: '/sequence-monitor'
+      preLoaderRoute: typeof AppSequenceMonitorRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/lead-discovery_/news-sources': {
