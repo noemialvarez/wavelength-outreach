@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { Loader2, Trash2 } from "lucide-react";
+import { Loader2, Mail, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -13,17 +14,31 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { StatusBadge } from "@/components/status-badge";
+import { StickyXScroll } from "@/components/sticky-x-scroll";
 import { GroupTitle, ShowMoreToggle, PREVIEW_COUNT } from "@/components/lead-discovery/group-parts";
+import { errorMessage } from "@/lib/contacts";
 import api from "@/lib/api";
 
 type NameSearchLead = {
   id: string;
   name: string;
   company: string;
+  email?: string | null;
   linkedin_url?: string;
   status: string;
   created_at: string;
 };
+
+// What one Apollo email lookup came back with.
+type EmailOutcome = {
+  status: "found" | "existing" | "none" | "error";
+  email?: string;
+  message?: string;
+  code?: string;
+};
+
+// Apollo problems that will hit every remaining lookup too, so a bulk run stops at the first one.
+const STOP_CODES = ["apollo_key", "apollo_plan", "apollo_rate"];
 
 const statusTones: Record<string, "turquoise" | "pink" | "blue" | "muted"> = {
   "Pending review": "muted",
@@ -34,7 +49,8 @@ const statusTones: Record<string, "turquoise" | "pink" | "blue" | "muted"> = {
 
 // Self-contained — deliberately doesn't reuse the shared Leads Results table:
 // leads found via Option 3 are already the named target person, so unlike
-// the other sections there's no "Find founder" or Apollo email lookup here.
+// the other sections there's no "Find founder" here. The email comes from Apollo on request
+// (the "Email" button), never automatically: a lookup costs an Apollo credit.
 export function useNameSearchLeads() {
   return useQuery<NameSearchLead[]>({
     queryKey: ["leads", "by-name"],
@@ -65,6 +81,94 @@ export function NameSearchLeads() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["leads", "by-name"] }),
     onError: () => toast.error("Failed to delete lead"),
   });
+
+  // --- Email: typed in by hand, or found with Apollo ---
+
+  const [localEmails, setLocalEmails] = useState<Record<string, string>>({});
+  const [emailLookupIds, setEmailLookupIds] = useState<Set<string>>(new Set());
+  const emailOf = (l: NameSearchLead) => localEmails[l.id] ?? l.email ?? "";
+
+  const saveEmailMutation = useMutation({
+    mutationFn: ({ id, email }: { id: string; email: string }) =>
+      api.patch(`/api/leads/${id}`, { email }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["leads"] }),
+    onError: () => toast.error("Failed to save email"),
+  });
+
+  // One Apollo lookup. The backend reuses an email the lead already has (no credit) and explains a
+  // refusal (key, plan, rate limit) instead of calling it "not found".
+  const lookupEmail = async (id: string): Promise<EmailOutcome> => {
+    try {
+      const r = await api.post(`/api/leads/${id}/find-email`);
+      const d = r.data as { email: string | null; existing?: boolean };
+      if (!d.email) return { status: "none" };
+      setLocalEmails((prev) => ({ ...prev, [id]: d.email! }));
+      return { status: d.existing ? "existing" : "found", email: d.email };
+    } catch (err) {
+      const code = (err as { response?: { data?: { code?: string } } })?.response?.data?.code;
+      return { status: "error", message: errorMessage(err, "Email lookup failed"), code };
+    }
+  };
+
+  const stopLooking = (id: string) =>
+    setEmailLookupIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+
+  const findEmail = async (l: NameSearchLead) => {
+    setEmailLookupIds((prev) => new Set(prev).add(l.id));
+    const outcome = await lookupEmail(l.id);
+    stopLooking(l.id);
+    queryClient.invalidateQueries({ queryKey: ["leads"] });
+    if (outcome.status === "found") toast.success(`Email found for ${l.name}: ${outcome.email}`);
+    else if (outcome.status === "existing")
+      toast.info(`${l.name} already has an email: ${outcome.email}`);
+    else if (outcome.status === "none") toast.info(`No email found for ${l.name} on Apollo`);
+    else toast.error(outcome.message ?? "Email lookup failed", { duration: 15000 });
+  };
+
+  // One lead at a time (Apollo rate-limits), skipping leads that already have an email. Each lookup
+  // that finds one costs about an Apollo credit, so ask first.
+  const bulkFindEmails = async (ids: string[]) => {
+    const targets = leads.filter((l) => ids.includes(l.id) && !emailOf(l));
+    if (targets.length === 0) {
+      toast.info("The selected leads already have an email");
+      return;
+    }
+    const n = targets.length;
+    if (
+      !confirm(
+        `Look up the email address of ${n} lead${n === 1 ? "" : "s"} with Apollo? This uses up to ${n} Apollo credit${n === 1 ? "" : "s"}.`,
+      )
+    ) {
+      return;
+    }
+    setEmailLookupIds(new Set(targets.map((l) => l.id)));
+    let found = 0;
+    let none = 0;
+    let stopMessage = "";
+    for (const l of targets) {
+      const outcome = await lookupEmail(l.id);
+      stopLooking(l.id);
+      if (outcome.status === "found" || outcome.status === "existing") found++;
+      else if (outcome.status === "none") none++;
+      else {
+        stopMessage = outcome.message ?? "Email lookup failed";
+        if (outcome.code && STOP_CODES.includes(outcome.code)) break;
+      }
+    }
+    setEmailLookupIds(new Set());
+    setSelected(new Set());
+    queryClient.invalidateQueries({ queryKey: ["leads"] });
+    if (found || !stopMessage) {
+      toast.success(
+        `${found} email${found === 1 ? "" : "s"} found${none ? `, ${none} not found` : ""}`,
+      );
+    }
+    if (stopMessage) toast.error(stopMessage, { duration: 15000 });
+  };
 
   const toggleSelect = (id: string) => {
     setSelected((prev) => {
@@ -149,6 +253,26 @@ export function NameSearchLeads() {
           </Button>
           <Button
             size="sm"
+            variant="outline"
+            className="border-brand-blue/40 text-brand-blue hover:bg-brand-blue/10"
+            title="Find the email address of the selected leads with Apollo (about 1 credit each)"
+            disabled={selected.size === 0 || emailLookupIds.size > 0}
+            onClick={() => bulkFindEmails(Array.from(selected))}
+          >
+            {emailLookupIds.size > 0 ? (
+              <>
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                Looking up… ({emailLookupIds.size} left)
+              </>
+            ) : (
+              <>
+                <Mail className="mr-1.5 h-3.5 w-3.5" />
+                Email
+              </>
+            )}
+          </Button>
+          <Button
+            size="sm"
             variant="ghost"
             className="text-muted-foreground hover:text-destructive"
             disabled={selected.size === 0}
@@ -158,14 +282,15 @@ export function NameSearchLeads() {
             Delete selected
           </Button>
         </div>
-        <div className="overflow-hidden rounded-md border">
-          <Table>
+        <StickyXScroll>
+          <Table containerClassName="overflow-visible">
             <TableHeader>
               <TableRow>
                 <TableHead className="w-10"></TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Company</TableHead>
                 <TableHead>LinkedIn</TableHead>
+                <TableHead>Email</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -197,6 +322,24 @@ export function NameSearchLeads() {
                     )}
                   </TableCell>
                   <TableCell>
+                    <Input
+                      className="h-7 w-48 text-sm"
+                      type="email"
+                      placeholder="name@company.com"
+                      aria-label={`Email of ${l.name}`}
+                      value={emailOf(l)}
+                      onChange={(e) =>
+                        setLocalEmails((prev) => ({ ...prev, [l.id]: e.target.value }))
+                      }
+                      onBlur={() => {
+                        const val = localEmails[l.id];
+                        if (val !== undefined && val !== (l.email ?? "")) {
+                          saveEmailMutation.mutate({ id: l.id, email: val });
+                        }
+                      }}
+                    />
+                  </TableCell>
+                  <TableCell>
                     <StatusBadge label={l.status} tone={statusTones[l.status] ?? "muted"} />
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
@@ -204,6 +347,25 @@ export function NameSearchLeads() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1.5">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-brand-blue/40 text-brand-blue hover:bg-brand-blue/10"
+                        title={
+                          emailOf(l)
+                            ? "Already has an email"
+                            : "Find the email address with Apollo (about 1 credit)"
+                        }
+                        disabled={emailLookupIds.has(l.id) || !!emailOf(l)}
+                        onClick={() => findEmail(l)}
+                      >
+                        {emailLookupIds.has(l.id) ? (
+                          <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Mail className="mr-1.5 h-3.5 w-3.5" />
+                        )}
+                        Email
+                      </Button>
                       <Button
                         size="sm"
                         variant="outline"
@@ -244,7 +406,7 @@ export function NameSearchLeads() {
               ))}
             </TableBody>
           </Table>
-        </div>
+        </StickyXScroll>
         <ShowMoreToggle total={leads.length} expanded={showAll} onToggle={toggleShowAll} />
       </>
     </div>
