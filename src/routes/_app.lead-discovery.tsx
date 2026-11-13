@@ -23,6 +23,7 @@ import { store, useStore } from "@/lib/store";
 import api from "@/lib/api";
 import { ByNameSearch } from "@/components/lead-discovery/by-name-search";
 import { NameSearchLeads, useNameSearchLeads } from "@/components/lead-discovery/name-search-leads";
+import { NameEmailLeads, useNameEmailLeads } from "@/components/lead-discovery/name-email-leads";
 import { LinkedinFollowUp } from "@/components/lead-discovery/linkedin-follow-up";
 import { CollapsibleSection } from "@/components/lead-discovery/collapsible-section";
 import { LeadGroup, useLeadActions, type LeadRow } from "@/components/lead-discovery/lead-group";
@@ -222,6 +223,7 @@ function LeadDiscoveryPage() {
     [leads, statusFilter],
   );
   const { data: nameLeads = [] } = useNameSearchLeads();
+  const { data: nameEmailLeads = [] } = useNameEmailLeads();
   const sections = [
     {
       eyebrow: "Option 1",
@@ -674,7 +676,7 @@ function LeadDiscoveryPage() {
       >
         {leadsLoading ? (
           <p className="py-8 text-center text-sm text-muted-foreground">Loading leads…</p>
-        ) : filtered.length === 0 && nameLeads.length === 0 ? (
+        ) : filtered.length === 0 && nameLeads.length === 0 && nameEmailLeads.length === 0 ? (
           <EmptyState icon={Radar} message="No leads yet. Run a search above to find leads." />
         ) : (
           <div className="space-y-6">
@@ -690,6 +692,7 @@ function LeadDiscoveryPage() {
               />
             ))}
             <NameSearchLeads />
+            <NameEmailLeads />
           </div>
         )}
       </CollapsibleSection>
