@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Search, Loader2, Send, Trash2, Plus, X } from "lucide-react";
+import { Search, Loader2, Send, Trash2, Plus, X, Pencil } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ import {
 } from "@/components/ui/table";
 import { CollapsibleSection } from "@/components/lead-discovery/collapsible-section";
 import { store, useStore, uid } from "@/lib/store";
+import { errorMessage } from "@/lib/contacts";
 import api from "@/lib/api";
 
 type NameCandidate = {
@@ -35,6 +37,19 @@ type NameCandidate = {
   title?: string;
   linkedin_url?: string;
 };
+
+// A person found in "email" mode. They are saved as a lead straight away (the id is the lead id), so
+// "Write draft" can use them without any LinkedIn step first.
+type EmailResult = {
+  id: string;
+  name: string;
+  company: string;
+  email: string;
+  linkedin_url?: string;
+  drafted: boolean;
+};
+
+type SearchMode = "linkedin" | "email";
 
 type SearchRow = {
   id: string;
@@ -77,6 +92,10 @@ export function ByNameSearch() {
   const [showCustomPurposeInput, setShowCustomPurposeInput] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [open, setOpen] = useState(false);
+  const [mode, setMode] = useState<SearchMode>("linkedin");
+  const [emailResults, setEmailResults] = useState<EmailResult[]>([]);
+  const [draftingIds, setDraftingIds] = useState<Set<string>>(new Set());
+  const navigate = useNavigate();
   const [results, setResults] = useState<NameCandidate[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [connectingIds, setConnectingIds] = useState<Set<string>>(new Set());
@@ -134,12 +153,105 @@ export function ByNameSearch() {
         })) as NameCandidate[];
       });
 
+  // Email mode: saves the person as a lead and asks Apollo for their email (about 1 credit each).
+  const searchEmail = (row: SearchRow) =>
+    api
+      .post("/api/discovery/by-name-email", {
+        firstName: row.firstName,
+        lastName: row.lastName,
+        company: row.company || undefined,
+        linkedinProfileUrl: row.linkedinProfile || undefined,
+        purpose,
+      })
+      .then(
+        (r) =>
+          r.data as {
+            lead: {
+              id: string;
+              name: string;
+              company?: string | null;
+              linkedin_url?: string | null;
+            };
+            email: string | null;
+            error?: { message: string; code?: string };
+          },
+      );
+
+  const runEmailSearch = async (validRows: SearchRow[]) => {
+    setIsSearching(true);
+    let found = 0;
+    let missing = 0;
+    for (const row of validRows) {
+      try {
+        const r = await searchEmail(row);
+        const email = r.email ?? "";
+        setEmailResults((prev) => [
+          {
+            id: r.lead.id,
+            name: r.lead.name,
+            company: r.lead.company ?? "",
+            email,
+            linkedin_url: r.lead.linkedin_url ?? undefined,
+            drafted: false,
+          },
+          ...prev.filter((x) => x.id !== r.lead.id),
+        ]);
+        if (email) found++;
+        else {
+          missing++;
+          if (r.error) toast.error(`${r.lead.name}: ${r.error.message}`, { duration: 15000 });
+        }
+      } catch (err) {
+        toast.error(
+          `${row.firstName} ${row.lastName}: ${errorMessage(err, "Email search failed")}`,
+          {
+            duration: 15000,
+          },
+        );
+      }
+    }
+    setIsSearching(false);
+    queryClient.invalidateQueries({ queryKey: ["leads"] });
+    if (found) {
+      toast.success(
+        `${found} email${found === 1 ? "" : "s"} found${missing ? `, ${missing} not found` : ""}`,
+      );
+    } else if (missing) toast.info("No email address found — you can type one in below.");
+  };
+
+  const saveEmail = (id: string, email: string) =>
+    api.patch(`/api/leads/${id}`, { email }).catch(() => toast.error("Failed to save email"));
+
+  const writeDraft = async (r: EmailResult) => {
+    setDraftingIds((prev) => new Set(prev).add(r.id));
+    try {
+      await api.post("/api/outreach/draft", { lead_id: r.id });
+      setEmailResults((prev) => prev.map((x) => (x.id === r.id ? { ...x, drafted: true } : x)));
+      queryClient.invalidateQueries({ queryKey: ["drafts"] });
+      toast.success(`Draft written for ${r.name}`, {
+        action: { label: "Review & send", onClick: () => navigate({ to: "/email-outreach" }) },
+      });
+    } catch (err) {
+      toast.error(errorMessage(err, "Failed to write the draft"), { duration: 15000 });
+    } finally {
+      setDraftingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(r.id);
+        return next;
+      });
+    }
+  };
+
   const runSearch = async () => {
     const validRows = rows.filter((r) => r.firstName.trim() && r.lastName.trim());
     if (validRows.length === 0 || !purpose.trim()) {
       // The search button shows even while the section is collapsed: open the form and say what's missing.
       setOpen(true);
       toast.info("Add a first and last name and a reason for reaching out, then search again.");
+      return;
+    }
+    if (mode === "email") {
+      await runEmailSearch(validRows);
       return;
     }
     setIsSearching(true);
@@ -224,8 +336,8 @@ export function ByNameSearch() {
     <>
       <CollapsibleSection
         eyebrow="Option 3"
-        title="By name LinkedIn outreach"
-        description="Search for one or more specific people on LinkedIn, then send them connection requests."
+        title="By name - LinkedIn or email outreach"
+        description="Search for one or more specific people, then either send them a LinkedIn connection request or write them an email."
         open={open}
         onOpenChange={setOpen}
         primaryAction={
@@ -235,11 +347,44 @@ export function ByNameSearch() {
             ) : (
               <Search className="mr-1.5 h-4 w-4" />
             )}
-            {isSearching ? "Searching…" : `Find LinkedIn profile${rows.length === 1 ? "" : "s"}`}
+            {isSearching
+              ? "Searching…"
+              : mode === "email"
+                ? `Find email${rows.length === 1 ? "" : "s"}`
+                : `Find LinkedIn profile${rows.length === 1 ? "" : "s"}`}
           </Button>
         }
       >
         <div className="space-y-4">
+          <div>
+            <label className="mb-1 block text-xs font-medium">What do you want to find?</label>
+            <div className="flex w-fit gap-1 rounded-md border p-1">
+              {(
+                [
+                  ["linkedin", "LinkedIn profile"],
+                  ["email", "Email address"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setMode(value)}
+                  className={`rounded px-3 py-1 text-sm font-medium transition-colors ${
+                    mode === value
+                      ? "bg-foreground text-background"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              {mode === "email"
+                ? "Add a company name or a LinkedIn profile for each person so Apollo finds the right one. Each email search uses about 1 Apollo credit. Then write the draft from the results."
+                : "Finds their LinkedIn profile; you then send the connection request from the results."}
+            </p>
+          </div>
           {rows.map((row, i) => (
             <div key={row.id} className="rounded-md border bg-muted/10 p-3">
               <div className="mb-2 flex items-center justify-between">
@@ -435,6 +580,82 @@ export function ByNameSearch() {
                           "Send connection request"
                         )}
                       </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </Card>
+      )}
+
+      {emailResults.length > 0 && (
+        <Card className="space-y-3 p-6">
+          <div className="text-xs font-medium text-muted-foreground">
+            {emailResults.length} {emailResults.length === 1 ? "person" : "people"} for email
+            outreach — the lead is saved; drafts appear on Email Outreach
+          </div>
+          <div className="overflow-hidden rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Company</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {emailResults.map((r) => (
+                  <TableRow key={r.id}>
+                    <TableCell className="font-medium">{r.name}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {r.company || "—"}
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        className="h-7 w-56 text-sm"
+                        type="email"
+                        placeholder="No email found — type one"
+                        aria-label={`Email of ${r.name}`}
+                        value={r.email}
+                        onChange={(e) =>
+                          setEmailResults((prev) =>
+                            prev.map((x) => (x.id === r.id ? { ...x, email: e.target.value } : x)),
+                          )
+                        }
+                        onBlur={() => saveEmail(r.id, r.email)}
+                      />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1.5">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-brand-turquoise/40 text-brand-turquoise hover:bg-brand-turquoise/10"
+                          disabled={draftingIds.has(r.id) || !r.email.trim()}
+                          title={r.email.trim() ? undefined : "Needs an email address first"}
+                          onClick={() => writeDraft(r)}
+                        >
+                          {draftingIds.has(r.id) ? (
+                            <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Pencil className="mr-1.5 h-3.5 w-3.5" />
+                          )}
+                          {r.drafted ? "Rewrite draft" : "Write draft"}
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                          title="Remove from this list (the lead stays saved)"
+                          onClick={() =>
+                            setEmailResults((prev) => prev.filter((x) => x.id !== r.id))
+                          }
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
