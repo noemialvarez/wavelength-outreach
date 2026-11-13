@@ -1,7 +1,7 @@
 import { ChevronDown, ChevronUp } from "lucide-react";
 
 // How many leads a list shows before "Show all".
-export const PREVIEW_COUNT = 3;
+export const PREVIEW_COUNT = 1;
 
 // The title of a lead list, in the same style as the option boxes above it:
 // a small "OPTION 1" label over a bold title, with the lead count beside it.

@@ -51,8 +51,6 @@ type DescriptionMatch = {
 function LeadDiscoveryPage() {
   const icp = useStore((s) => s.icp);
 
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
   const [descQuery, setDescQuery] = useState({
     description: "",
     industries: [] as string[],
@@ -67,16 +65,6 @@ function LeadDiscoveryPage() {
   const [approvedIcpMatches, setApprovedIcpMatches] = useState<Set<string>>(new Set());
 
   const queryClient = useQueryClient();
-  const leadActions = useLeadActions();
-
-  const { data: leadsData, isLoading: leadsLoading } = useQuery({
-    queryKey: ["leads"],
-    queryFn: () => api.get("/api/leads", { params: { limit: 200 } }).then((r) => r.data.data ?? []),
-  });
-  const leads = leadsData ?? [];
-  const pageLeadCount = (leads as LeadRow[]).filter(
-    (l) => l.source === "icp_filters" || l.source === "company_description",
-  ).length;
 
   const descSearchMutation = useMutation({
     mutationFn: () =>
@@ -210,43 +198,6 @@ function LeadDiscoveryPage() {
     },
     onError: () => toast.error("Failed to add lead"),
   });
-
-  // Only ICP / company-description leads are listed here. News-source leads live on
-  // the "By news sources" page; by_name leads are listed inside Option 3.
-  const filtered = useMemo(
-    () =>
-      (leads as LeadRow[]).filter(
-        (l) =>
-          (l.source === "icp_filters" || l.source === "company_description") &&
-          (statusFilter === "all" || l.status === statusFilter),
-      ),
-    [leads, statusFilter],
-  );
-  const { data: nameLeads = [] } = useNameSearchLeads();
-  const { data: nameEmailLeads = [] } = useNameEmailLeads();
-  const sections = [
-    {
-      eyebrow: "Option 1",
-      title: "Leads from ICP filters",
-      items: filtered.filter((l) => l.source === "icp_filters"),
-    },
-    {
-      eyebrow: "Option 2",
-      title: "Leads from company description",
-      items: filtered.filter((l) => l.source === "company_description"),
-    },
-  ].filter((sec) => sec.items.length > 0);
-
-  const toggleSection = (title: string) => {
-    setCollapsedSections((prev) => {
-      const next = new Set(prev);
-      if (next.has(title)) next.delete(title);
-      else next.add(title);
-      return next;
-    });
-  };
-
-  const expandAllSections = () => setCollapsedSections(new Set());
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 p-8">
@@ -640,64 +591,17 @@ function LeadDiscoveryPage() {
       {/* Option 3 — By name */}
       <ByNameSearch />
 
-      {/* Leads table */}
-      <CollapsibleSection
-        title="Leads Results"
-        badge={
-          <span className="text-xs font-normal text-muted-foreground">
-            {filtered.length} of {pageLeadCount} leads
-          </span>
-        }
-        headerExtra={
-          <div className="flex items-center gap-2">
-            {collapsedSections.size > 0 && (
-              <button
-                type="button"
-                onClick={expandAllSections}
-                className="text-sm font-medium text-brand-blue hover:underline"
-              >
-                Expand all lists
-              </button>
-            )}
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All statuses</SelectItem>
-                <SelectItem value="Pending review">Pending review</SelectItem>
-                <SelectItem value="Approved">Approved</SelectItem>
-                <SelectItem value="Skipped">Skipped</SelectItem>
-                <SelectItem value="Pushed">Pushed</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        }
-      >
-        {leadsLoading ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">Loading leads…</p>
-        ) : filtered.length === 0 && nameLeads.length === 0 && nameEmailLeads.length === 0 ? (
-          <EmptyState icon={Radar} message="No leads yet. Run a search above to find leads." />
-        ) : (
-          <div className="space-y-6">
-            {sections.map((sec) => (
-              <LeadGroup
-                key={sec.title}
-                eyebrow={sec.eyebrow}
-                title={sec.title}
-                items={sec.items}
-                actions={leadActions}
-                collapsed={collapsedSections.has(sec.title)}
-                onToggleCollapsed={() => toggleSection(sec.title)}
-              />
-            ))}
-            <NameSearchLeads />
-            <NameEmailLeads />
-          </div>
-        )}
-      </CollapsibleSection>
-
-      <LinkedinFollowUp />
+      <div className="flex items-center justify-between rounded-lg border bg-muted/10 p-4">
+        <p className="text-sm text-muted-foreground">
+          Found leads are listed on the Leads Results page.
+        </p>
+        <Link
+          to="/lead-discovery/results"
+          className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-blue hover:underline"
+        >
+          Go to Leads Results <ArrowRight className="h-4 w-4" />
+        </Link>
+      </div>
 
       <div className="flex justify-end pt-2">
         <Link

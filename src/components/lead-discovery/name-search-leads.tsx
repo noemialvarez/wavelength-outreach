@@ -221,7 +221,7 @@ export function NameSearchLeads() {
   return (
     <div className="space-y-3 rounded-lg border bg-muted/10 p-4">
       <GroupTitle
-        eyebrow="Option 3"
+        eyebrow="Option 3a"
         title="Leads from name search (LinkedIn)"
         count={leads.length}
       />

@@ -27,7 +27,10 @@ const items: NavItem[] = [
     title: "Lead Discovery",
     url: "/lead-discovery",
     icon: Radar,
-    children: [{ title: "By news sources", url: "/lead-discovery/news-sources" }],
+    children: [
+      { title: "By news sources", url: "/lead-discovery/news-sources" },
+      { title: "Leads Results", url: "/lead-discovery/results" },
+    ],
   },
   { title: "LinkedIn Engagement", url: "/linkedin-engagement", icon: UserCheck },
   { title: "Email Outreach", url: "/email-outreach", icon: Mail },
