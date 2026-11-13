@@ -99,7 +99,12 @@ export function RevealableList({
     return (
       <div className="space-y-2">
         <div className="flex justify-end">
-          <Button size="sm" variant="outline" onClick={() => setRevealed(false)}>
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-brand-blue/40 text-brand-blue hover:bg-brand-blue/10 hover:text-brand-blue"
+            onClick={() => setRevealed(false)}
+          >
             <EyeOff className="mr-2 h-4 w-4" /> Hide leads
           </Button>
         </div>

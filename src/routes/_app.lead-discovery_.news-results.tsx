@@ -1,6 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Radar, Loader2 } from "lucide-react";
+import { Radar, Loader2, ArrowRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Select,
@@ -115,6 +115,15 @@ function NewsResultsPage() {
           />
         )}
       </CollapsibleSection>
+
+      <div className="flex justify-end pt-2">
+        <Link
+          to="/email-outreach"
+          className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-pink hover:underline"
+        >
+          Next step: write draft <ArrowRight className="h-4 w-4" />
+        </Link>
+      </div>
     </div>
   );
 }
