@@ -49,6 +49,9 @@ function LeadResultsPage() {
   );
   const { data: nameLeads = [] } = useNameSearchLeads();
   const { data: nameEmailLeads = [] } = useNameEmailLeads();
+  const hasApproved = [...(leads as LeadRow[]), ...nameLeads, ...nameEmailLeads].some(
+    (l) => l.status === "Approved",
+  );
   const allSections = [
     {
       eyebrow: "Option 1",
@@ -156,14 +159,16 @@ function LeadResultsPage() {
 
       <LinkedinFollowUp />
 
-      <div className="flex justify-end pt-2">
-        <Link
-          to="/email-outreach"
-          className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-pink hover:underline"
-        >
-          Next step: draft message <ArrowRight className="h-4 w-4" />
-        </Link>
-      </div>
+      {hasApproved && (
+        <div className="flex justify-end pt-2">
+          <Link
+            to="/email-outreach"
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-pink hover:underline"
+          >
+            Next step: write draft <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

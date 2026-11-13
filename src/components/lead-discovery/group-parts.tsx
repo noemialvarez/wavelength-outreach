@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, ChevronUp, Eye } from "lucide-react";
+import { ChevronDown, ChevronUp, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 // How many leads a list shows before "Show all".
@@ -95,7 +95,18 @@ export function RevealableList({
   children: React.ReactNode;
 }) {
   const [revealed, setRevealed] = useState(false);
-  if (revealed && count > 0) return <>{children}</>;
+  if (revealed && count > 0) {
+    return (
+      <div className="space-y-2">
+        <div className="flex justify-end">
+          <Button size="sm" variant="outline" onClick={() => setRevealed(false)}>
+            <EyeOff className="mr-2 h-4 w-4" /> Hide leads
+          </Button>
+        </div>
+        {children}
+      </div>
+    );
+  }
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted/10 p-4">
       <GroupTitle eyebrow={eyebrow} title={title} count={count} />
