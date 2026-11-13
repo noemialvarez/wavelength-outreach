@@ -531,7 +531,7 @@ function NewsSourcesPage() {
         </p>
         <Link
           to="/lead-discovery/news-results"
-          className="inline-flex items-center gap-1.5 text-sm font-semibold text-destructive hover:underline"
+          className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-pink hover:underline"
         >
           Next step: lead results <ArrowRight className="h-4 w-4" />
         </Link>

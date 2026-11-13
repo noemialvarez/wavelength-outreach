@@ -1,6 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Radar } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Select,
@@ -9,11 +9,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { EmptyState } from "@/components/empty-state";
 import api from "@/lib/api";
 import { NameSearchLeads, useNameSearchLeads } from "@/components/lead-discovery/name-search-leads";
 import { NameEmailLeads, useNameEmailLeads } from "@/components/lead-discovery/name-email-leads";
-import { ShowLeadsCta } from "@/components/lead-discovery/group-parts";
+import { RevealableList } from "@/components/lead-discovery/group-parts";
 import { LinkedinFollowUp } from "@/components/lead-discovery/linkedin-follow-up";
 import { CollapsibleSection } from "@/components/lead-discovery/collapsible-section";
 import { LeadGroup, useLeadActions, type LeadRow } from "@/components/lead-discovery/lead-group";
@@ -26,7 +25,6 @@ export const Route = createFileRoute("/_app/lead-discovery_/results")({
 function LeadResultsPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
-  const [revealed, setRevealed] = useState(false);
   const leadActions = useLeadActions();
 
   const { data: leadsData, isLoading: leadsLoading } = useQuery({
@@ -51,7 +49,7 @@ function LeadResultsPage() {
   );
   const { data: nameLeads = [] } = useNameSearchLeads();
   const { data: nameEmailLeads = [] } = useNameEmailLeads();
-  const sections = [
+  const allSections = [
     {
       eyebrow: "Option 1",
       title: "Leads from ICP filters",
@@ -62,7 +60,7 @@ function LeadResultsPage() {
       title: "Leads from company description",
       items: filtered.filter((l) => l.source === "company_description"),
     },
-  ].filter((sec) => sec.items.length > 0);
+  ];
 
   const toggleSection = (title: string) => {
     setCollapsedSections((prev) => {
@@ -119,33 +117,53 @@ function LeadResultsPage() {
       >
         {leadsLoading ? (
           <p className="py-8 text-center text-sm text-muted-foreground">Loading leads…</p>
-        ) : !revealed ? (
-          <ShowLeadsCta
-            count={filtered.length + nameLeads.length + nameEmailLeads.length}
-            onClick={() => setRevealed(true)}
-          />
-        ) : filtered.length === 0 && nameLeads.length === 0 && nameEmailLeads.length === 0 ? (
-          <EmptyState icon={Radar} message="No leads yet. Run a search in Lead Discovery first." />
         ) : (
           <div className="space-y-6">
-            {sections.map((sec) => (
-              <LeadGroup
+            {allSections.map((sec) => (
+              <RevealableList
                 key={sec.title}
                 eyebrow={sec.eyebrow}
                 title={sec.title}
-                items={sec.items}
-                actions={leadActions}
-                collapsed={collapsedSections.has(sec.title)}
-                onToggleCollapsed={() => toggleSection(sec.title)}
-              />
+                count={sec.items.length}
+              >
+                <LeadGroup
+                  eyebrow={sec.eyebrow}
+                  title={sec.title}
+                  items={sec.items}
+                  actions={leadActions}
+                  collapsed={collapsedSections.has(sec.title)}
+                  onToggleCollapsed={() => toggleSection(sec.title)}
+                />
+              </RevealableList>
             ))}
-            <NameSearchLeads />
-            <NameEmailLeads />
+            <RevealableList
+              eyebrow="Option 3A"
+              title="Leads from name search (LinkedIn)"
+              count={nameLeads.length}
+            >
+              <NameSearchLeads />
+            </RevealableList>
+            <RevealableList
+              eyebrow="Option 3B"
+              title="Leads from name search (email)"
+              count={nameEmailLeads.length}
+            >
+              <NameEmailLeads />
+            </RevealableList>
           </div>
         )}
       </CollapsibleSection>
 
       <LinkedinFollowUp />
+
+      <div className="flex justify-end pt-2">
+        <Link
+          to="/email-outreach"
+          className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-pink hover:underline"
+        >
+          Next step: draft message <ArrowRight className="h-4 w-4" />
+        </Link>
+      </div>
     </div>
   );
 }

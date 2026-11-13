@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { ChevronDown, ChevronUp, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -76,6 +77,39 @@ export function ShowLeadsCta({ count, onClick }: { count: number; onClick: () =>
       <Button size="lg" onClick={onClick} className="bg-brand-blue text-white hover:bg-brand-blue/90">
         <Eye className="mr-2 h-4 w-4" /> Show leads
       </Button>
+    </div>
+  );
+}
+
+// One lead list on a results page: shows the option's title and lead count with its own
+// "Show leads" button; the list itself (children) only appears once that is clicked.
+export function RevealableList({
+  eyebrow,
+  title,
+  count,
+  children,
+}: {
+  eyebrow: string;
+  title: string;
+  count: number;
+  children: React.ReactNode;
+}) {
+  const [revealed, setRevealed] = useState(false);
+  if (revealed && count > 0) return <>{children}</>;
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted/10 p-4">
+      <GroupTitle eyebrow={eyebrow} title={title} count={count} />
+      {count > 0 ? (
+        <Button
+          size="sm"
+          onClick={() => setRevealed(true)}
+          className="bg-brand-blue text-white hover:bg-brand-blue/90"
+        >
+          <Eye className="mr-2 h-4 w-4" /> Show leads
+        </Button>
+      ) : (
+        <span className="text-sm text-muted-foreground">No leads yet</span>
+      )}
     </div>
   );
 }

@@ -597,18 +597,9 @@ function LeadDiscoveryPage() {
         </p>
         <Link
           to="/lead-discovery/results"
-          className="inline-flex items-center gap-1.5 text-sm font-semibold text-destructive hover:underline"
-        >
-          Next step: lead results <ArrowRight className="h-4 w-4" />
-        </Link>
-      </div>
-
-      <div className="flex justify-end pt-2">
-        <Link
-          to="/linkedin-engagement"
           className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-pink hover:underline"
         >
-          Next step <ArrowRight className="h-4 w-4" />
+          Next step: lead results <ArrowRight className="h-4 w-4" />
         </Link>
       </div>
     </div>
