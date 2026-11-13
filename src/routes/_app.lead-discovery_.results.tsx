@@ -1,6 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Radar, ArrowRight } from "lucide-react";
+import { Radar } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Select,
@@ -13,6 +13,7 @@ import { EmptyState } from "@/components/empty-state";
 import api from "@/lib/api";
 import { NameSearchLeads, useNameSearchLeads } from "@/components/lead-discovery/name-search-leads";
 import { NameEmailLeads, useNameEmailLeads } from "@/components/lead-discovery/name-email-leads";
+import { ShowLeadsCta } from "@/components/lead-discovery/group-parts";
 import { LinkedinFollowUp } from "@/components/lead-discovery/linkedin-follow-up";
 import { CollapsibleSection } from "@/components/lead-discovery/collapsible-section";
 import { LeadGroup, useLeadActions, type LeadRow } from "@/components/lead-discovery/lead-group";
@@ -25,6 +26,7 @@ export const Route = createFileRoute("/_app/lead-discovery_/results")({
 function LeadResultsPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+  const [revealed, setRevealed] = useState(false);
   const leadActions = useLeadActions();
 
   const { data: leadsData, isLoading: leadsLoading } = useQuery({
@@ -117,6 +119,11 @@ function LeadResultsPage() {
       >
         {leadsLoading ? (
           <p className="py-8 text-center text-sm text-muted-foreground">Loading leads…</p>
+        ) : !revealed ? (
+          <ShowLeadsCta
+            count={filtered.length + nameLeads.length + nameEmailLeads.length}
+            onClick={() => setRevealed(true)}
+          />
         ) : filtered.length === 0 && nameLeads.length === 0 && nameEmailLeads.length === 0 ? (
           <EmptyState icon={Radar} message="No leads yet. Run a search in Lead Discovery first." />
         ) : (
@@ -139,15 +146,6 @@ function LeadResultsPage() {
       </CollapsibleSection>
 
       <LinkedinFollowUp />
-
-      <div className="flex justify-end pt-2">
-        <Link
-          to="/linkedin-engagement"
-          className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-pink hover:underline"
-        >
-          Next step <ArrowRight className="h-4 w-4" />
-        </Link>
-      </div>
     </div>
   );
 }

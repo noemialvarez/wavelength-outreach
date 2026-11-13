@@ -1,7 +1,8 @@
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Eye } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 // How many leads a list shows before "Show all".
-export const PREVIEW_COUNT = 1;
+export const PREVIEW_COUNT = 2;
 
 // The title of a lead list, in the same style as the option boxes above it:
 // a small "OPTION 1" label over a bold title, with the lead count beside it.
@@ -62,5 +63,19 @@ export function ShowMoreToggle({
         </>
       )}
     </button>
+  );
+}
+
+// Leads pages open with nothing listed: this call to action reveals the lists.
+export function ShowLeadsCta({ count, onClick }: { count: number; onClick: () => void }) {
+  return (
+    <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed py-10 text-center">
+      <p className="text-sm text-muted-foreground">
+        {count > 0 ? `${count} lead${count === 1 ? "" : "s"} found so far.` : "No leads found yet."}
+      </p>
+      <Button size="lg" onClick={onClick} className="bg-brand-blue text-white hover:bg-brand-blue/90">
+        <Eye className="mr-2 h-4 w-4" /> Show leads
+      </Button>
+    </div>
   );
 }

@@ -91,7 +91,7 @@ export function NameEmailLeads() {
 
   return (
     <div className="space-y-3 rounded-lg border bg-muted/10 p-4">
-      <GroupTitle eyebrow="Option 3b" title="Leads from name search (email)" count={leads.length} />
+      <GroupTitle eyebrow="Option 3B" title="Leads from name search (email)" count={leads.length} />
       <div className="overflow-hidden rounded-md border">
         <Table>
           <TableHeader>

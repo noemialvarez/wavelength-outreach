@@ -30,10 +30,19 @@ const items: NavItem[] = [
     children: [
       { title: "By news sources", url: "/lead-discovery/news-sources" },
       { title: "Leads Results", url: "/lead-discovery/results" },
+      { title: "News source results", url: "/lead-discovery/news-results" },
     ],
   },
   { title: "LinkedIn Engagement", url: "/linkedin-engagement", icon: UserCheck },
-  { title: "Email Outreach", url: "/email-outreach", icon: Mail },
+  {
+    title: "Outreach",
+    url: "/email-outreach",
+    icon: Mail,
+    children: [
+      { title: "Email Outreach", url: "/email-outreach" },
+      { title: "LinkedIn outreach", url: "/linkedin-outreach" },
+    ],
+  },
   { title: "Campaign Monitor", url: "/sequence-monitor", icon: Activity },
 ];
 

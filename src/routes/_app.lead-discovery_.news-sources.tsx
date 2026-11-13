@@ -1,7 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import {
   Plus,
+  ArrowRight,
   Play,
   Trash2,
   Loader2,
@@ -96,14 +97,10 @@ function NewsSourcesPage() {
   const [selectedSignals, setSelectedSignals] = useState<Set<string>>(new Set());
   const [showAllSources, setShowAllSources] = useState(false);
   const [showAllSignals, setShowAllSignals] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [typeFilter, setTypeFilter] = useState<string>("all");
-  const [leadsCollapsed, setLeadsCollapsed] = useState(false);
   // Sort the scan results by signal type; clicking the Type header cycles none → A–Z → Z–A.
   const [typeSort, setTypeSort] = useState<"asc" | "desc" | null>(null);
 
   const queryClient = useQueryClient();
-  const leadActions = useLeadActions();
 
   const { data: signalsData, isLoading: signalsLoading } = useQuery({
     queryKey: ["signals"],
@@ -130,28 +127,6 @@ function NewsSourcesPage() {
   const signalIds = newSignals.map((sig) => sig.id);
   const selectedSignalIds = signalIds.filter((id) => selectedSignals.has(id));
   const allSignalsSelected = signalIds.length > 0 && selectedSignalIds.length === signalIds.length;
-
-  const { data: leadsData, isLoading: leadsLoading } = useQuery({
-    queryKey: ["leads"],
-    queryFn: () => api.get("/api/leads", { params: { limit: 200 } }).then((r) => r.data.data ?? []),
-  });
-  // Leads that came from a signal scan: everything except ICP, company-description and
-  // by-name leads, which are listed on the main Lead Discovery page.
-  const signalLeads = useMemo(
-    () =>
-      ((leadsData ?? []) as LeadRow[]).filter(
-        (l) =>
-          l.source !== "icp_filters" &&
-          l.source !== "company_description" &&
-          l.source !== "by_name",
-      ),
-    [leadsData],
-  );
-  const filteredLeads = signalLeads.filter(
-    (l) =>
-      (statusFilter === "all" || l.status === statusFilter) &&
-      (typeFilter === "all" || l.signalType === typeFilter),
-  );
 
   const approveMutation = useMutation({
     mutationFn: (id: string) =>
@@ -550,59 +525,17 @@ function NewsSourcesPage() {
         </div>
       </CollapsibleSection>
 
-      <CollapsibleSection
-        title="Leads Results"
-        defaultOpen
-        badge={
-          <span className="text-xs font-normal text-muted-foreground">
-            {filteredLeads.length} of {signalLeads.length} leads
-          </span>
-        }
-        headerExtra={
-          <div className="flex items-center gap-2">
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All statuses</SelectItem>
-                <SelectItem value="Pending review">Pending review</SelectItem>
-                <SelectItem value="Approved">Approved</SelectItem>
-                <SelectItem value="Skipped">Skipped</SelectItem>
-                <SelectItem value="Pushed">Pushed</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="Signal type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All signals</SelectItem>
-                <SelectItem value="Funding">Funding</SelectItem>
-                <SelectItem value="Key hire">Key hire</SelectItem>
-                <SelectItem value="Product launch">Product launch</SelectItem>
-                <SelectItem value="Other">Other</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        }
-      >
-        {leadsLoading ? (
-          <p className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> Loading leads…
-          </p>
-        ) : filteredLeads.length === 0 ? (
-          <EmptyState icon={Radar} message="No leads yet. Configure your sources and run a scan." />
-        ) : (
-          <LeadGroup
-            title="Leads by News Sources"
-            items={filteredLeads}
-            actions={leadActions}
-            collapsed={leadsCollapsed}
-            onToggleCollapsed={() => setLeadsCollapsed((v) => !v)}
-          />
-        )}
-      </CollapsibleSection>
+      <div className="flex items-center justify-between rounded-lg border bg-muted/10 p-4">
+        <p className="text-sm text-muted-foreground">
+          Approved signals become leads, listed on the news source results page.
+        </p>
+        <Link
+          to="/lead-discovery/news-results"
+          className="inline-flex items-center gap-1.5 text-sm font-semibold text-destructive hover:underline"
+        >
+          Next step: lead results <ArrowRight className="h-4 w-4" />
+        </Link>
+      </div>
     </div>
   );
 }

@@ -13,11 +13,13 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppSequenceMonitorRouteImport } from './routes/_app.sequence-monitor'
 import { Route as AppProspectEngagementRouteImport } from './routes/_app.prospect-engagement'
+import { Route as AppLinkedinOutreachRouteImport } from './routes/_app.linkedin-outreach'
 import { Route as AppLinkedinEngagementRouteImport } from './routes/_app.linkedin-engagement'
 import { Route as AppLeadDiscoveryRouteImport } from './routes/_app.lead-discovery'
 import { Route as AppEmailOutreachRouteImport } from './routes/_app.email-outreach'
 import { Route as AppLeadDiscoveryResultsRouteImport } from './routes/_app.lead-discovery_.results'
 import { Route as AppLeadDiscoveryNewsSourcesRouteImport } from './routes/_app.lead-discovery_.news-sources'
+import { Route as AppLeadDiscoveryNewsResultsRouteImport } from './routes/_app.lead-discovery_.news-results'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -36,6 +38,11 @@ const AppSequenceMonitorRoute = AppSequenceMonitorRouteImport.update({
 const AppProspectEngagementRoute = AppProspectEngagementRouteImport.update({
   id: '/prospect-engagement',
   path: '/prospect-engagement',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppLinkedinOutreachRoute = AppLinkedinOutreachRouteImport.update({
+  id: '/linkedin-outreach',
+  path: '/linkedin-outreach',
   getParentRoute: () => AppRoute,
 } as any)
 const AppLinkedinEngagementRoute = AppLinkedinEngagementRouteImport.update({
@@ -64,14 +71,22 @@ const AppLeadDiscoveryNewsSourcesRoute =
     path: '/lead-discovery/news-sources',
     getParentRoute: () => AppRoute,
   } as any)
+const AppLeadDiscoveryNewsResultsRoute =
+  AppLeadDiscoveryNewsResultsRouteImport.update({
+    id: '/lead-discovery_/news-results',
+    path: '/lead-discovery/news-results',
+    getParentRoute: () => AppRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/email-outreach': typeof AppEmailOutreachRoute
   '/lead-discovery': typeof AppLeadDiscoveryRoute
   '/linkedin-engagement': typeof AppLinkedinEngagementRoute
+  '/linkedin-outreach': typeof AppLinkedinOutreachRoute
   '/prospect-engagement': typeof AppProspectEngagementRoute
   '/sequence-monitor': typeof AppSequenceMonitorRoute
+  '/lead-discovery/news-results': typeof AppLeadDiscoveryNewsResultsRoute
   '/lead-discovery/news-sources': typeof AppLeadDiscoveryNewsSourcesRoute
   '/lead-discovery/results': typeof AppLeadDiscoveryResultsRoute
 }
@@ -80,8 +95,10 @@ export interface FileRoutesByTo {
   '/email-outreach': typeof AppEmailOutreachRoute
   '/lead-discovery': typeof AppLeadDiscoveryRoute
   '/linkedin-engagement': typeof AppLinkedinEngagementRoute
+  '/linkedin-outreach': typeof AppLinkedinOutreachRoute
   '/prospect-engagement': typeof AppProspectEngagementRoute
   '/sequence-monitor': typeof AppSequenceMonitorRoute
+  '/lead-discovery/news-results': typeof AppLeadDiscoveryNewsResultsRoute
   '/lead-discovery/news-sources': typeof AppLeadDiscoveryNewsSourcesRoute
   '/lead-discovery/results': typeof AppLeadDiscoveryResultsRoute
 }
@@ -92,8 +109,10 @@ export interface FileRoutesById {
   '/_app/email-outreach': typeof AppEmailOutreachRoute
   '/_app/lead-discovery': typeof AppLeadDiscoveryRoute
   '/_app/linkedin-engagement': typeof AppLinkedinEngagementRoute
+  '/_app/linkedin-outreach': typeof AppLinkedinOutreachRoute
   '/_app/prospect-engagement': typeof AppProspectEngagementRoute
   '/_app/sequence-monitor': typeof AppSequenceMonitorRoute
+  '/_app/lead-discovery_/news-results': typeof AppLeadDiscoveryNewsResultsRoute
   '/_app/lead-discovery_/news-sources': typeof AppLeadDiscoveryNewsSourcesRoute
   '/_app/lead-discovery_/results': typeof AppLeadDiscoveryResultsRoute
 }
@@ -104,8 +123,10 @@ export interface FileRouteTypes {
     | '/email-outreach'
     | '/lead-discovery'
     | '/linkedin-engagement'
+    | '/linkedin-outreach'
     | '/prospect-engagement'
     | '/sequence-monitor'
+    | '/lead-discovery/news-results'
     | '/lead-discovery/news-sources'
     | '/lead-discovery/results'
   fileRoutesByTo: FileRoutesByTo
@@ -114,8 +135,10 @@ export interface FileRouteTypes {
     | '/email-outreach'
     | '/lead-discovery'
     | '/linkedin-engagement'
+    | '/linkedin-outreach'
     | '/prospect-engagement'
     | '/sequence-monitor'
+    | '/lead-discovery/news-results'
     | '/lead-discovery/news-sources'
     | '/lead-discovery/results'
   id:
@@ -125,8 +148,10 @@ export interface FileRouteTypes {
     | '/_app/email-outreach'
     | '/_app/lead-discovery'
     | '/_app/linkedin-engagement'
+    | '/_app/linkedin-outreach'
     | '/_app/prospect-engagement'
     | '/_app/sequence-monitor'
+    | '/_app/lead-discovery_/news-results'
     | '/_app/lead-discovery_/news-sources'
     | '/_app/lead-discovery_/results'
   fileRoutesById: FileRoutesById
@@ -166,6 +191,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProspectEngagementRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/linkedin-outreach': {
+      id: '/_app/linkedin-outreach'
+      path: '/linkedin-outreach'
+      fullPath: '/linkedin-outreach'
+      preLoaderRoute: typeof AppLinkedinOutreachRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/linkedin-engagement': {
       id: '/_app/linkedin-engagement'
       path: '/linkedin-engagement'
@@ -201,6 +233,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppLeadDiscoveryNewsSourcesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/lead-discovery_/news-results': {
+      id: '/_app/lead-discovery_/news-results'
+      path: '/lead-discovery/news-results'
+      fullPath: '/lead-discovery/news-results'
+      preLoaderRoute: typeof AppLeadDiscoveryNewsResultsRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
@@ -208,8 +247,10 @@ interface AppRouteChildren {
   AppEmailOutreachRoute: typeof AppEmailOutreachRoute
   AppLeadDiscoveryRoute: typeof AppLeadDiscoveryRoute
   AppLinkedinEngagementRoute: typeof AppLinkedinEngagementRoute
+  AppLinkedinOutreachRoute: typeof AppLinkedinOutreachRoute
   AppProspectEngagementRoute: typeof AppProspectEngagementRoute
   AppSequenceMonitorRoute: typeof AppSequenceMonitorRoute
+  AppLeadDiscoveryNewsResultsRoute: typeof AppLeadDiscoveryNewsResultsRoute
   AppLeadDiscoveryNewsSourcesRoute: typeof AppLeadDiscoveryNewsSourcesRoute
   AppLeadDiscoveryResultsRoute: typeof AppLeadDiscoveryResultsRoute
 }
@@ -218,8 +259,10 @@ const AppRouteChildren: AppRouteChildren = {
   AppEmailOutreachRoute: AppEmailOutreachRoute,
   AppLeadDiscoveryRoute: AppLeadDiscoveryRoute,
   AppLinkedinEngagementRoute: AppLinkedinEngagementRoute,
+  AppLinkedinOutreachRoute: AppLinkedinOutreachRoute,
   AppProspectEngagementRoute: AppProspectEngagementRoute,
   AppSequenceMonitorRoute: AppSequenceMonitorRoute,
+  AppLeadDiscoveryNewsResultsRoute: AppLeadDiscoveryNewsResultsRoute,
   AppLeadDiscoveryNewsSourcesRoute: AppLeadDiscoveryNewsSourcesRoute,
   AppLeadDiscoveryResultsRoute: AppLeadDiscoveryResultsRoute,
 }

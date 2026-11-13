@@ -597,9 +597,9 @@ function LeadDiscoveryPage() {
         </p>
         <Link
           to="/lead-discovery/results"
-          className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-blue hover:underline"
+          className="inline-flex items-center gap-1.5 text-sm font-semibold text-destructive hover:underline"
         >
-          Go to Leads Results <ArrowRight className="h-4 w-4" />
+          Next step: lead results <ArrowRight className="h-4 w-4" />
         </Link>
       </div>
 
